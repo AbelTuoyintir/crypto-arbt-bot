@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  bot:
+    build: .
+    container_name: gat_arbitrage_bot
+    environment:
+      - BASE_TOKEN_NAME=Global Access Tech
+      - BASE_TOKEN_SYMBOL=GAT
+      - BASE_TOKEN_ADDRESS=0x1111111111111111111111111111111111111111
+      - CHAIN_ID=56
+      - RPC_URL=https://bsc-dataseed.binance.org/
+      - TRADING_MODE=simulation
+      - REAL_MONEY=false
+      - ENABLE_LIVE_TRADING=false
+      - DATABASE_URL=sqlite:////app/gat_arbitrage.db
+    volumes:
+      - ./gat_arbitrage.db:/app/gat_arbitrage.db
+    command: python -c "from src.dex.pancakeswap_adapter import PancakeSwapAdapter; from src.dex.manager import DEXManager; from src.scanner.market_scanner import MarketScanner; mgr = DEXManager(); adapter = PancakeSwapAdapter(); mgr.register_adapter('PancakeSwap', adapter); scanner = MarketScanner(dex_manager=mgr); scanner.start_scanning_loop([{'address': '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c', 'symbol': 'WBNB'}], interval_seconds=10)"
+
+  dashboard:
+    build: .
+    container_name: gat_arbitrage_dashboard
+    ports:
+      - "5000:5000"
+    environment:
+      - DATABASE_URL=sqlite:////app/gat_arbitrage.db
+    volumes:
+      - ./gat_arbitrage.db:/app/gat_arbitrage.db
+    command: python src/dashboard/app.py
