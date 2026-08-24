@@ -1,4 +1,5 @@
 import logging
+import time
 from typing import Dict, Any
 from web3 import Web3
 from src.dex.base_adapter import BaseDEXAdapter
@@ -10,11 +11,15 @@ PANCAKE_ROUTER_V2 = "0x10ED43C718714eb63d5aA57B78B54704E256024E"
 PANCAKE_FACTORY_V2 = "0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73"
 
 class PancakeSwapAdapter(BaseDEXAdapter):
-    def __init__(self, rpc_url: str = None, router_address: str = PANCAKE_ROUTER_V2, factory_address: str = PANCAKE_FACTORY_V2):
+    def __init__(self, rpc_url: str = None, router_address: str = PANCAKE_ROUTER_V2, factory_address: str = PANCAKE_FACTORY_V2, gas_price_ttl: float = 5.0):
         super().__init__(name="PancakeSwapV2", router_address=router_address, factory_address=factory_address)
         self.rpc_url = rpc_url or settings.RPC_URL
         self.w3 = Web3(Web3.HTTPProvider(self.rpc_url))
         self._mock_pools = {}
+        # Gas price caching attributes (reduces expensive RPC calls during scanning/simulation)
+        self.gas_price_ttl = gas_price_ttl
+        self._cached_gas_price: float = None
+        self._gas_price_updated_at: float = 0.0
 
     def set_mock_pool(self, token_a: str, token_b: str, reserve_a: float, reserve_b: float, fee_percent: float = 0.25):
         """Set mock pool reserves for offline testing/simulation."""
@@ -50,12 +55,24 @@ class PancakeSwapAdapter(BaseDEXAdapter):
             return 0.0
         return numerator / denominator
 
+    def _get_gas_price(self) -> float:
+        """
+        Fetch current gas price in ETH/BNB from Web3 RPC, cached for `gas_price_ttl` seconds
+        to avoid latency bottlenecks during high-frequency market scanning.
+        """
+        now = time.time()
+        if self._cached_gas_price is None or (now - self._gas_price_updated_at) > self.gas_price_ttl:
+            try:
+                self._cached_gas_price = float(self.w3.from_wei(self.w3.eth.gas_price, 'ether'))
+            except Exception:
+                self._cached_gas_price = 3e-9  # 3 gwei default fallback
+            self._gas_price_updated_at = now
+        return self._cached_gas_price
+
     def estimate_gas(self, token_in: str, token_out: str, amount_in: float) -> float:
         # Standard Pancakeswap swap gas requirement ~150,000 gas
-        try:
-            gas_price = float(self.w3.from_wei(self.w3.eth.gas_price, 'ether'))
-        except Exception:
-            gas_price = 3e-9  # 3 gwei
+        # Uses cached gas price to prevent redundant RPC network calls in loops
+        gas_price = self._get_gas_price()
         return gas_price * 150000
 
     def simulate_swap(self, token_in: str, token_out: str, amount_in: float, min_amount_out: float) -> Dict[str, Any]:
