@@ -197,6 +197,16 @@ def dashboard():
     finally:
         db.close()
 
+@app.after_request
+def add_security_headers(response):
+    # Security headers to protect against clickjacking, MIME sniffing, and XSS
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    response.headers['Content-Security-Policy'] = "default-src 'self' 'unsafe-inline';"
+    return response
+
 @app.route("/api/metrics")
 def api_metrics():
     db = SessionLocal()
