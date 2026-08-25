@@ -197,6 +197,12 @@ def dashboard():
     finally:
         db.close()
 
+@app.errorhandler(Exception)
+def handle_exception(e):
+    # Log the exception securely server-side to prevent information disclosure
+    app.logger.error(f"Unhandled dashboard exception: {e}", exc_info=True)
+    return jsonify({"error": "An internal server error occurred"}), 500
+
 @app.after_request
 def add_security_headers(response):
     # Security headers to protect against clickjacking, MIME sniffing, and XSS
