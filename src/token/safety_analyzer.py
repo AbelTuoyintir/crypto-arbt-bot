@@ -41,7 +41,10 @@ class TokenSafetyAnalyzer:
                 "reasons": ["Invalid target token or target is base token"],
                 "buy_tax": 0.0,
                 "sell_tax": 0.0,
-                "sellable": False
+                "sellable": False,
+                "quote_tokens_out": 0.0,
+                "quote_final_gat_gross": 0.0,
+                "quote_amount_gat": test_amount_gat
             }
 
         # 2. Contract Status Checks (Is Paused / Blacklist / Whitelist restrictions)
@@ -83,14 +86,21 @@ class TokenSafetyAnalyzer:
                 "reasons": rejection_reasons,
                 "buy_tax": buy_tax,
                 "sell_tax": sell_tax,
-                "sellable": False
+                "sellable": False,
+                "quote_tokens_out": 0.0,
+                "quote_final_gat_gross": 0.0,
+                "quote_amount_gat": test_amount_gat
             }
 
         # Round-trip Simulation with DEX Adapter if available
         sellable = True
+        quote_tokens_out = 0.0
+        quote_final_gat_gross = 0.0
+
         if self.dex_adapter:
             # Step 1: Buy GAT -> TOKEN
             tokens_received = self.dex_adapter.get_quote(test_amount_gat, self.base_token_address, token_address)
+            quote_tokens_out = tokens_received
             tokens_after_buy_tax = tokens_received * (1 - (buy_tax / 100.0))
 
             if tokens_after_buy_tax <= 0:
@@ -100,6 +110,7 @@ class TokenSafetyAnalyzer:
             else:
                 # Step 2: Sell TOKEN -> GAT
                 gat_received = self.dex_adapter.get_quote(tokens_after_buy_tax, token_address, self.base_token_address)
+                quote_final_gat_gross = gat_received
                 gat_after_sell_tax = gat_received * (1 - (sell_tax / 100.0))
 
                 if gat_after_sell_tax <= 0:
@@ -140,5 +151,11 @@ class TokenSafetyAnalyzer:
             "reasons": rejection_reasons,
             "buy_tax": buy_tax,
             "sell_tax": sell_tax,
-            "sellable": sellable
+            "sellable": sellable,
+            # Pre-calculated quote outputs from safety analysis simulation.
+            # Includes quote_amount_gat to allow downstream callers (TradeSimulator)
+            # to safely verify amount match before reusing quotes.
+            "quote_tokens_out": quote_tokens_out,
+            "quote_final_gat_gross": quote_final_gat_gross,
+            "quote_amount_gat": test_amount_gat
         }
