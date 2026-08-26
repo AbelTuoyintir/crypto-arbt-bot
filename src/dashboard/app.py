@@ -104,7 +104,7 @@ HTML_TEMPLATE = """
             {% for opp in opportunities %}
             <tr>
                 <td>{{ opp.id }}</td>
-                <td>{{ opp.target_token[:10] }}...</td>
+                <td>{{ (opp.target_token|string)[:10] }}...</td>
                 <td>{{ opp.dex }}</td>
                 <td>{{ "%.2f"|format(opp.initial_gat) }}</td>
                 <td>{{ "%.2f"|format(opp.expected_final_gat) }}</td>
