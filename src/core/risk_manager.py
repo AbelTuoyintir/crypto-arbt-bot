@@ -40,6 +40,12 @@ class RiskManager:
                 "reason": "Emergency Kill Switch is ACTIVE. Trading halted."
             }
 
+        if trade_amount_gat <= 0:
+            return {
+                "approved": False,
+                "reason": f"Invalid trade amount ({trade_amount_gat}). Must be greater than zero."
+            }
+
         if self.daily_trades >= settings.MAX_DAILY_TRADES:
             return {
                 "approved": False,
