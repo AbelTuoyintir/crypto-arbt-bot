@@ -23,19 +23,28 @@ class PancakeSwapAdapter(BaseDEXAdapter):
 
     def set_mock_pool(self, token_a: str, token_b: str, reserve_a: float, reserve_b: float, fee_percent: float = 0.25):
         """Set mock pool reserves for offline testing/simulation."""
-        key = f"{min(token_a.lower(), token_b.lower())}_{max(token_a.lower(), token_b.lower())}"
-        if token_a.lower() < token_b.lower():
+        # BOLT OPTIMIZATION: Avoid duplicate .lower() calls and min()/max() overhead
+        a_low, b_low = token_a.lower(), token_b.lower()
+        if a_low < b_low:
+            key = f"{a_low}_{b_low}"
             self._mock_pools[key] = {"reserve_a": reserve_a, "reserve_b": reserve_b, "fee": fee_percent}
         else:
+            key = f"{b_low}_{a_low}"
             self._mock_pools[key] = {"reserve_a": reserve_b, "reserve_b": reserve_a, "fee": fee_percent}
 
     def _get_reserves(self, token_in: str, token_out: str):
-        key = f"{min(token_in.lower(), token_out.lower())}_{max(token_in.lower(), token_out.lower())}"
-        if key in self._mock_pools:
-            pool = self._mock_pools[key]
-            if token_in.lower() < token_out.lower():
+        # BOLT OPTIMIZATION: High-frequency lookup path optimized by avoiding duplicate .lower()
+        # and min()/max() string comparisons during scanning and quote simulations.
+        in_low, out_low = token_in.lower(), token_out.lower()
+        if in_low < out_low:
+            key = f"{in_low}_{out_low}"
+            pool = self._mock_pools.get(key)
+            if pool:
                 return pool["reserve_a"], pool["reserve_b"], pool["fee"]
-            else:
+        else:
+            key = f"{out_low}_{in_low}"
+            pool = self._mock_pools.get(key)
+            if pool:
                 return pool["reserve_b"], pool["reserve_a"], pool["fee"]
         # Default mock fallback if not set
         return 100000.0, 100000.0, 0.25
