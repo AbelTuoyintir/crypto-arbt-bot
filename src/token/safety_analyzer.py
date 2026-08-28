@@ -1,5 +1,6 @@
 import logging
 from typing import Dict, Any, Optional
+from web3 import Web3
 from config.settings import settings
 from src.dex.base_adapter import BaseDEXAdapter
 
@@ -33,12 +34,12 @@ class TokenSafetyAnalyzer:
             token_info = {}
 
         # 1. Address Validation
-        if not token_address or token_address.lower() == self.base_token_address.lower():
+        if not token_address or not Web3.is_address(token_address) or token_address.lower() == self.base_token_address.lower():
             return {
                 "safe": False,
                 "risk_score": 100.0,
                 "risk_level": "BLOCKED",
-                "reasons": ["Invalid target token or target is base token"],
+                "reasons": ["Invalid target token address or target is base token"],
                 "buy_tax": 0.0,
                 "sell_tax": 0.0,
                 "sellable": False

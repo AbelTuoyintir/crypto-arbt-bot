@@ -31,11 +31,15 @@ class MockTradingDEX(BaseDEXAdapter):
     def get_pool_price(self, token_in, token_out):
         return self.output_multiplier
 
+VALID_TOKEN_1 = '0x3333333333333333333333333333333333333333'
+VALID_TOKEN_2 = '0x4444444444444444444444444444444444444444'
+VALID_TOKEN_3 = '0x5555555555555555555555555555555555555555'
+
 def test_successful_simulation():
     dex = MockTradingDEX(output_multiplier=1.05, gas_cost=0.001)
     analyzer = TokenSafetyAnalyzer(dex_adapter=dex)
     sim = TradeSimulator(dex_adapter=dex, safety_analyzer=analyzer)
-    res = sim.simulate_arbitrage_cycle(target_token='0xGOOD', initial_gat=100.0, token_info={'liquidity': 50000.0, 'buy_tax': 0.0, 'sell_tax': 0.0})
+    res = sim.simulate_arbitrage_cycle(target_token=VALID_TOKEN_1, initial_gat=100.0, token_info={'liquidity': 50000.0, 'buy_tax': 0.0, 'sell_tax': 0.0})
     assert res["valid"] is True
     assert res["profit_analysis"]["net_profit"] > 0
 
@@ -43,12 +47,12 @@ def test_failed_simulation_unprofitable():
     dex = MockTradingDEX(output_multiplier=0.98, gas_cost=0.001)
     analyzer = TokenSafetyAnalyzer(dex_adapter=dex)
     sim = TradeSimulator(dex_adapter=dex, safety_analyzer=analyzer)
-    res = sim.simulate_arbitrage_cycle(target_token='0xBAD', initial_gat=100.0, token_info={'liquidity': 50000.0})
+    res = sim.simulate_arbitrage_cycle(target_token=VALID_TOKEN_2, initial_gat=100.0, token_info={'liquidity': 50000.0})
     assert res["valid"] is False
 
 def test_slippage_failure():
     dex = MockTradingDEX(output_multiplier=1.01, gas_cost=0.001)
     analyzer = TokenSafetyAnalyzer(dex_adapter=dex)
     sim = TradeSimulator(dex_adapter=dex, safety_analyzer=analyzer)
-    res = sim.simulate_arbitrage_cycle(target_token='0xSLIP', initial_gat=100.0, token_info={'liquidity': 50000.0, 'buy_tax': 1.0, 'sell_tax': 1.0})
+    res = sim.simulate_arbitrage_cycle(target_token=VALID_TOKEN_3, initial_gat=100.0, token_info={'liquidity': 50000.0, 'buy_tax': 1.0, 'sell_tax': 1.0})
     assert res["valid"] is False
