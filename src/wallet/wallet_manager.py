@@ -9,12 +9,14 @@ class WalletManager:
     def __init__(self, rpc_url: str = None, private_key: str = None):
         self.rpc_url = rpc_url or settings.RPC_URL
         self.w3 = Web3(Web3.HTTPProvider(self.rpc_url))
-        self.private_key = private_key or settings.PRIVATE_KEY
         self.account = None
 
-        if self.private_key:
+        # Process private key in local scope to avoid keeping raw private keys
+        # as instance attributes in memory (__dict__).
+        key = private_key or settings.PRIVATE_KEY
+        if key:
             try:
-                self.account = Account.from_key(self.private_key)
+                self.account = Account.from_key(key)
                 logger.info(f"Loaded wallet account: {self.get_masked_address()}")
             except Exception as e:
                 logger.error("Failed to load account from private key")
