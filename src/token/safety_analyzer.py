@@ -88,10 +88,14 @@ class TokenSafetyAnalyzer:
 
         # Round-trip Simulation with DEX Adapter if available
         sellable = True
+        tokens_out = 0.0
+        final_gat_gross = 0.0
         if self.dex_adapter:
             # Step 1: Buy GAT -> TOKEN
-            tokens_received = self.dex_adapter.get_quote(test_amount_gat, self.base_token_address, token_address)
-            tokens_after_buy_tax = tokens_received * (1 - (buy_tax / 100.0))
+            # Optimized: capture tokens_out and final_gat_gross to pass to simulator,
+            # avoiding redundant DEX quote queries in subsequent trade simulation steps.
+            tokens_out = self.dex_adapter.get_quote(test_amount_gat, self.base_token_address, token_address)
+            tokens_after_buy_tax = tokens_out * (1 - (buy_tax / 100.0))
 
             if tokens_after_buy_tax <= 0:
                 sellable = False
@@ -99,8 +103,8 @@ class TokenSafetyAnalyzer:
                 rejection_reasons.append("Buy swap produced zero output")
             else:
                 # Step 2: Sell TOKEN -> GAT
-                gat_received = self.dex_adapter.get_quote(tokens_after_buy_tax, token_address, self.base_token_address)
-                gat_after_sell_tax = gat_received * (1 - (sell_tax / 100.0))
+                final_gat_gross = self.dex_adapter.get_quote(tokens_after_buy_tax, token_address, self.base_token_address)
+                gat_after_sell_tax = final_gat_gross * (1 - (sell_tax / 100.0))
 
                 if gat_after_sell_tax <= 0:
                     sellable = False
@@ -140,5 +144,8 @@ class TokenSafetyAnalyzer:
             "reasons": rejection_reasons,
             "buy_tax": buy_tax,
             "sell_tax": sell_tax,
-            "sellable": sellable
+            "sellable": sellable,
+            "quote_initial_gat": test_amount_gat if self.dex_adapter else 0.0,
+            "tokens_out": tokens_out,
+            "final_gat_gross": final_gat_gross
         }
