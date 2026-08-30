@@ -14,7 +14,9 @@ def test_dashboard_security_headers(client):
     assert response.headers.get('X-Content-Type-Options') == 'nosniff'
     assert response.headers.get('X-XSS-Protection') == '1; mode=block'
     assert response.headers.get('Referrer-Policy') == 'strict-origin-when-cross-origin'
-    assert response.headers.get('Content-Security-Policy') == "default-src 'self' 'unsafe-inline';"
+    assert response.headers.get('Content-Security-Policy') == "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'self';"
+    assert response.headers.get('X-Permitted-Cross-Domain-Policies') == 'none'
+    assert response.headers.get('Cross-Origin-Opener-Policy') == 'same-origin'
 
 def test_api_metrics_security_headers(client):
     response = client.get('/api/metrics')
@@ -23,4 +25,6 @@ def test_api_metrics_security_headers(client):
     assert response.headers.get('X-Content-Type-Options') == 'nosniff'
     assert response.headers.get('X-XSS-Protection') == '1; mode=block'
     assert response.headers.get('Referrer-Policy') == 'strict-origin-when-cross-origin'
-    assert response.headers.get('Content-Security-Policy') == "default-src 'self' 'unsafe-inline';"
+    assert response.headers.get('Content-Security-Policy') == "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'self';"
+    assert response.headers.get('X-Permitted-Cross-Domain-Policies') == 'none'
+    assert response.headers.get('Cross-Origin-Opener-Policy') == 'same-origin'
