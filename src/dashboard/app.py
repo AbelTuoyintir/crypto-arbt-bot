@@ -1,8 +1,11 @@
+import logging
 from flask import Flask, render_template_string, jsonify
 from datetime import datetime, timezone, timedelta
 from config.settings import settings
 from src.db.models import SessionLocal, Opportunity, Trade, Token
 from src.wallet.wallet_manager import WalletManager
+
+logger = logging.getLogger("Dashboard")
 
 app = Flask(__name__)
 wallet_mgr = WalletManager()
@@ -224,6 +227,9 @@ def api_metrics():
             "total_trades": total_trades,
             "total_profit": total_profit
         })
+    except Exception as e:
+        logger.error(f"Error fetching dashboard metrics: {e}")
+        return jsonify({"error": "An internal error occurred"}), 500
     finally:
         db.close()
 
