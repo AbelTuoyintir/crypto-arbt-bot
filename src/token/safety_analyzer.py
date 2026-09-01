@@ -88,9 +88,13 @@ class TokenSafetyAnalyzer:
 
         # Round-trip Simulation with DEX Adapter if available
         sellable = True
+        quote_leg1: Optional[float] = None
+        quote_leg2: Optional[float] = None
+
         if self.dex_adapter:
             # Step 1: Buy GAT -> TOKEN
             tokens_received = self.dex_adapter.get_quote(test_amount_gat, self.base_token_address, token_address)
+            quote_leg1 = tokens_received
             tokens_after_buy_tax = tokens_received * (1 - (buy_tax / 100.0))
 
             if tokens_after_buy_tax <= 0:
@@ -100,6 +104,7 @@ class TokenSafetyAnalyzer:
             else:
                 # Step 2: Sell TOKEN -> GAT
                 gat_received = self.dex_adapter.get_quote(tokens_after_buy_tax, token_address, self.base_token_address)
+                quote_leg2 = gat_received
                 gat_after_sell_tax = gat_received * (1 - (sell_tax / 100.0))
 
                 if gat_after_sell_tax <= 0:
@@ -140,5 +145,8 @@ class TokenSafetyAnalyzer:
             "reasons": rejection_reasons,
             "buy_tax": buy_tax,
             "sell_tax": sell_tax,
-            "sellable": sellable
+            "sellable": sellable,
+            "quote_amount_gat": test_amount_gat if self.dex_adapter else None,
+            "quote_leg1": quote_leg1,
+            "quote_leg2": quote_leg2
         }
