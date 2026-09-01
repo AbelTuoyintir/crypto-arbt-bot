@@ -52,3 +52,11 @@ def test_slippage_failure():
     sim = TradeSimulator(dex_adapter=dex, safety_analyzer=analyzer)
     res = sim.simulate_arbitrage_cycle(target_token='0xSLIP', initial_gat=100.0, token_info={'liquidity': 50000.0, 'buy_tax': 1.0, 'sell_tax': 1.0})
     assert res["valid"] is False
+
+def test_wallet_manager_no_private_key_attribute():
+    from src.wallet.wallet_manager import WalletManager
+    dummy_key = "0x4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318"
+    wallet_mgr = WalletManager(private_key=dummy_key)
+    assert wallet_mgr.has_wallet() is True
+    assert wallet_mgr.get_address().startswith("0x")
+    assert "private_key" not in wallet_mgr.__dict__
