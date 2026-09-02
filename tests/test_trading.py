@@ -52,3 +52,13 @@ def test_slippage_failure():
     sim = TradeSimulator(dex_adapter=dex, safety_analyzer=analyzer)
     res = sim.simulate_arbitrage_cycle(target_token='0xSLIP', initial_gat=100.0, token_info={'liquidity': 50000.0, 'buy_tax': 1.0, 'sell_tax': 1.0})
     assert res["valid"] is False
+
+def test_differing_gat_amount_uncached():
+    dex = MockTradingDEX(output_multiplier=1.05, gas_cost=0.001)
+    analyzer = TokenSafetyAnalyzer(dex_adapter=dex)
+    sim = TradeSimulator(dex_adapter=dex, safety_analyzer=analyzer)
+    # Perform safety analysis with default test_amount_gat = 100.0, but simulate with initial_gat = 200.0
+    res = sim.simulate_arbitrage_cycle(target_token='0xGOOD', initial_gat=200.0, token_info={'liquidity': 50000.0, 'buy_tax': 0.0, 'sell_tax': 0.0})
+    assert res["valid"] is True
+    # Verify that received tokens scale with initial_gat=200.0 (200.0 * 1.05 = 210.0)
+    assert res["tokens_received"] == pytest.approx(210.0)

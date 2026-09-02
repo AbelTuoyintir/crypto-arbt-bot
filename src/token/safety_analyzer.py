@@ -88,6 +88,8 @@ class TokenSafetyAnalyzer:
 
         # Round-trip Simulation with DEX Adapter if available
         sellable = True
+        tokens_received = 0.0
+        gat_received = 0.0
         if self.dex_adapter:
             # Step 1: Buy GAT -> TOKEN
             tokens_received = self.dex_adapter.get_quote(test_amount_gat, self.base_token_address, token_address)
@@ -133,6 +135,8 @@ class TokenSafetyAnalyzer:
 
         is_safe = (risk_score <= settings.MAX_TOKEN_RISK_SCORE) and sellable
 
+        # Performance optimization: Include quote outputs and test_amount_gat in safety result to eliminate
+        # redundant quote calls in downstream simulation (TradeSimulator).
         return {
             "safe": is_safe,
             "risk_score": risk_score,
@@ -140,5 +144,8 @@ class TokenSafetyAnalyzer:
             "reasons": rejection_reasons,
             "buy_tax": buy_tax,
             "sell_tax": sell_tax,
-            "sellable": sellable
+            "sellable": sellable,
+            "test_amount_gat": test_amount_gat,
+            "tokens_received": tokens_received,
+            "gat_received": gat_received
         }
