@@ -1,5 +1,6 @@
 import logging
 from typing import Dict, Any, Optional
+from web3 import Web3
 from config.settings import settings
 from src.dex.base_adapter import BaseDEXAdapter
 
@@ -39,6 +40,18 @@ class TokenSafetyAnalyzer:
                 "risk_score": 100.0,
                 "risk_level": "BLOCKED",
                 "reasons": ["Invalid target token or target is base token"],
+                "buy_tax": 0.0,
+                "sell_tax": 0.0,
+                "sellable": False
+            }
+
+        # EVM address validity check (Security Enhancement: Input Validation)
+        if not Web3.is_address(token_address):
+            return {
+                "safe": False,
+                "risk_score": 100.0,
+                "risk_level": "BLOCKED",
+                "reasons": [f"Invalid EVM token address format: {token_address}"],
                 "buy_tax": 0.0,
                 "sell_tax": 0.0,
                 "sellable": False
