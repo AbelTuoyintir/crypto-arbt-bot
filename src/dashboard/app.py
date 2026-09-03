@@ -1,5 +1,6 @@
 from flask import Flask, render_template_string, jsonify
 from datetime import datetime, timezone, timedelta
+from sqlalchemy import func
 from config.settings import settings
 from src.db.models import SessionLocal, Opportunity, Trade, Token
 from src.wallet.wallet_manager import WalletManager
@@ -134,16 +135,13 @@ def dashboard():
             "locked_balance": 0.0
         }
 
-        # Arbitrage metrics
-        opps = db.query(Opportunity).all()
-        trades = db.query(Trade).all()
-
-        found = len(opps)
-        profitable = len([o for o in opps if o.estimated_profit > 0])
-        rejected = len([o for o in opps if o.status == 'rejected'])
-        executed = len(trades)
-        successful = len([t for t in trades if t.status == 'success'])
-        failed = len([t for t in trades if t.status == 'failed'])
+        # Arbitrage metrics (using SQL aggregations for O(1) memory and high performance)
+        found = db.query(func.count(Opportunity.id)).scalar() or 0
+        profitable = db.query(func.count(Opportunity.id)).filter(Opportunity.estimated_profit > 0).scalar() or 0
+        rejected = db.query(func.count(Opportunity.id)).filter(Opportunity.status == 'rejected').scalar() or 0
+        executed = db.query(func.count(Trade.id)).scalar() or 0
+        successful = db.query(func.count(Trade.id)).filter(Trade.status == 'success').scalar() or 0
+        failed = db.query(func.count(Trade.id)).filter(Trade.status == 'failed').scalar() or 0
 
         arbitrage = {
             "found": found,
@@ -154,17 +152,26 @@ def dashboard():
             "failed": failed
         }
 
-        # Profit metrics
+        # Profit metrics (SQL sum & average calculations instead of loading all objects in Python)
         now = datetime.now(timezone.utc)
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
         week_start = now - timedelta(days=7)
 
-        successful_trades = [t for t in trades if t.status == 'success']
+        today_profit = float(db.query(func.coalesce(func.sum(Trade.actual_profit), 0.0)).filter(
+            Trade.status == 'success',
+            Trade.created_at >= today_start
+        ).scalar() or 0.0)
 
-        today_profit = sum(t.actual_profit for t in successful_trades if t.created_at and t.created_at.replace(tzinfo=timezone.utc) >= today_start)
-        weekly_profit = sum(t.actual_profit for t in successful_trades if t.created_at and t.created_at.replace(tzinfo=timezone.utc) >= week_start)
-        total_profit = sum(t.actual_profit for t in successful_trades)
-        avg_profit = (total_profit / len(successful_trades)) if successful_trades else 0.0
+        weekly_profit = float(db.query(func.coalesce(func.sum(Trade.actual_profit), 0.0)).filter(
+            Trade.status == 'success',
+            Trade.created_at >= week_start
+        ).scalar() or 0.0)
+
+        total_profit = float(db.query(func.coalesce(func.sum(Trade.actual_profit), 0.0)).filter(
+            Trade.status == 'success'
+        ).scalar() or 0.0)
+
+        avg_profit = (total_profit / successful) if successful > 0 else 0.0
 
         profit = {
             "today": today_profit,
@@ -174,13 +181,13 @@ def dashboard():
         }
 
         # Risk metrics
-        blocked_tokens = db.query(Token).filter(Token.risk_score > settings.MAX_TOKEN_RISK_SCORE).count()
+        blocked_tokens = db.query(func.count(Token.id)).filter(Token.risk_score > settings.MAX_TOKEN_RISK_SCORE).scalar() or 0
         risk = {
             "blocked_tokens": blocked_tokens,
-            "failed_simulations": len([o for o in opps if o.status == 'rejected']),
-            "failed_sell_tests": len([o for o in opps if o.expected_final_gat == 0]),
-            "liquidity_warnings": len([o for o in opps if o.risk_score >= 40]),
-            "slippage_warnings": len([o for o in opps if o.slippage > settings.MAX_SLIPPAGE_PERCENT])
+            "failed_simulations": rejected,
+            "failed_sell_tests": db.query(func.count(Opportunity.id)).filter(Opportunity.expected_final_gat == 0).scalar() or 0,
+            "liquidity_warnings": db.query(func.count(Opportunity.id)).filter(Opportunity.risk_score >= 40).scalar() or 0,
+            "slippage_warnings": db.query(func.count(Opportunity.id)).filter(Opportunity.slippage > settings.MAX_SLIPPAGE_PERCENT).scalar() or 0
         }
 
         recent_opps = db.query(Opportunity).order_by(Opportunity.id.desc()).limit(10).all()
@@ -211,10 +218,9 @@ def add_security_headers(response):
 def api_metrics():
     db = SessionLocal()
     try:
-        total_opps = db.query(Opportunity).count()
-        total_trades = db.query(Trade).count()
-        successful_trades = db.query(Trade).filter(Trade.status == 'success').all()
-        total_profit = sum(t.actual_profit for t in successful_trades)
+        total_opps = db.query(func.count(Opportunity.id)).scalar() or 0
+        total_trades = db.query(func.count(Trade.id)).scalar() or 0
+        total_profit = float(db.query(func.coalesce(func.sum(Trade.actual_profit), 0.0)).filter(Trade.status == 'success').scalar() or 0.0)
 
         return jsonify({
             "status": "online",
