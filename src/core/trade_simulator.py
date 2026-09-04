@@ -47,47 +47,57 @@ class TradeSimulator:
                 "profit_analysis": None
             }
 
-        # 2. Simulate Leg 1: GAT -> TOKEN
-        try:
-            tokens_out = self.dex_adapter.get_quote(initial_gat, base_token, target_token)
-        except Exception as e:
-            return {
-                "valid": False,
-                "rejection_reason": f"Failed quote on Leg 1 (GAT -> TOKEN): {e}",
-                "safety_analysis": safety_res,
-                "profit_analysis": None
-            }
-
-        if tokens_out <= 0:
-            return {
-                "valid": False,
-                "rejection_reason": "Leg 1 (GAT -> TOKEN) returned 0 tokens",
-                "safety_analysis": safety_res,
-                "profit_analysis": None
-            }
-
-        # Apply buy tax
         buy_tax = safety_res.get("buy_tax", 0.0)
-        tokens_received = tokens_out * (1.0 - (buy_tax / 100.0))
 
-        # 3. Simulate Leg 2: TOKEN -> GAT
-        try:
-            final_gat_gross = self.dex_adapter.get_quote(tokens_received, target_token, base_token)
-        except Exception as e:
-            return {
-                "valid": False,
-                "rejection_reason": f"Failed quote on Leg 2 (TOKEN -> GAT): {e}",
-                "safety_analysis": safety_res,
-                "profit_analysis": None
-            }
+        # 2 & 3. Simulate Leg 1 & Leg 2
+        # Performance optimization: Reuse DEX quotes calculated during safety analysis
+        # if test_amount_gat matches initial_gat to avoid duplicate network RPC calls per simulation.
+        if (
+            safety_res.get("test_amount_gat") == initial_gat
+            and safety_res.get("tokens_out", 0.0) > 0
+            and safety_res.get("final_gat_gross", 0.0) > 0
+        ):
+            tokens_out = safety_res["tokens_out"]
+            final_gat_gross = safety_res["final_gat_gross"]
+            tokens_received = tokens_out * (1.0 - (buy_tax / 100.0))
+        else:
+            try:
+                tokens_out = self.dex_adapter.get_quote(initial_gat, base_token, target_token)
+            except Exception as e:
+                return {
+                    "valid": False,
+                    "rejection_reason": f"Failed quote on Leg 1 (GAT -> TOKEN): {e}",
+                    "safety_analysis": safety_res,
+                    "profit_analysis": None
+                }
 
-        if final_gat_gross <= 0:
-            return {
-                "valid": False,
-                "rejection_reason": "Leg 2 (TOKEN -> GAT) returned 0 GAT (Sell simulation failed)",
-                "safety_analysis": safety_res,
-                "profit_analysis": None
-            }
+            if tokens_out <= 0:
+                return {
+                    "valid": False,
+                    "rejection_reason": "Leg 1 (GAT -> TOKEN) returned 0 tokens",
+                    "safety_analysis": safety_res,
+                    "profit_analysis": None
+                }
+
+            tokens_received = tokens_out * (1.0 - (buy_tax / 100.0))
+
+            try:
+                final_gat_gross = self.dex_adapter.get_quote(tokens_received, target_token, base_token)
+            except Exception as e:
+                return {
+                    "valid": False,
+                    "rejection_reason": f"Failed quote on Leg 2 (TOKEN -> GAT): {e}",
+                    "safety_analysis": safety_res,
+                    "profit_analysis": None
+                }
+
+            if final_gat_gross <= 0:
+                return {
+                    "valid": False,
+                    "rejection_reason": "Leg 2 (TOKEN -> GAT) returned 0 GAT (Sell simulation failed)",
+                    "safety_analysis": safety_res,
+                    "profit_analysis": None
+                }
 
         # 4. Estimate Gas Costs for 2 swaps
         gas_leg1 = self.dex_adapter.estimate_gas(base_token, target_token, initial_gat)
