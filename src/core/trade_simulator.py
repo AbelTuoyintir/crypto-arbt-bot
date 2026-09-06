@@ -47,16 +47,18 @@ class TradeSimulator:
                 "profit_analysis": None
             }
 
-        # 2. Simulate Leg 1: GAT -> TOKEN
-        try:
-            tokens_out = self.dex_adapter.get_quote(initial_gat, base_token, target_token)
-        except Exception as e:
-            return {
-                "valid": False,
-                "rejection_reason": f"Failed quote on Leg 1 (GAT -> TOKEN): {e}",
-                "safety_analysis": safety_res,
-                "profit_analysis": None
-            }
+        # 2. Simulate Leg 1: GAT -> TOKEN (reuse quote from safety analysis if matching initial_gat to eliminate redundant DEX calls)
+        tokens_out = safety_res.get("tokens_out") if safety_res.get("test_amount_gat") == initial_gat else None
+        if tokens_out is None or tokens_out <= 0:
+            try:
+                tokens_out = self.dex_adapter.get_quote(initial_gat, base_token, target_token)
+            except Exception as e:
+                return {
+                    "valid": False,
+                    "rejection_reason": f"Failed quote on Leg 1 (GAT -> TOKEN): {e}",
+                    "safety_analysis": safety_res,
+                    "profit_analysis": None
+                }
 
         if tokens_out <= 0:
             return {
@@ -70,16 +72,18 @@ class TradeSimulator:
         buy_tax = safety_res.get("buy_tax", 0.0)
         tokens_received = tokens_out * (1.0 - (buy_tax / 100.0))
 
-        # 3. Simulate Leg 2: TOKEN -> GAT
-        try:
-            final_gat_gross = self.dex_adapter.get_quote(tokens_received, target_token, base_token)
-        except Exception as e:
-            return {
-                "valid": False,
-                "rejection_reason": f"Failed quote on Leg 2 (TOKEN -> GAT): {e}",
-                "safety_analysis": safety_res,
-                "profit_analysis": None
-            }
+        # 3. Simulate Leg 2: TOKEN -> GAT (reuse quote from safety analysis if matching initial_gat to eliminate redundant DEX calls)
+        final_gat_gross = safety_res.get("final_gat_gross") if safety_res.get("test_amount_gat") == initial_gat else None
+        if final_gat_gross is None or final_gat_gross <= 0:
+            try:
+                final_gat_gross = self.dex_adapter.get_quote(tokens_received, target_token, base_token)
+            except Exception as e:
+                return {
+                    "valid": False,
+                    "rejection_reason": f"Failed quote on Leg 2 (TOKEN -> GAT): {e}",
+                    "safety_analysis": safety_res,
+                    "profit_analysis": None
+                }
 
         if final_gat_gross <= 0:
             return {

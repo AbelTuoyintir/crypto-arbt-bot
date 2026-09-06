@@ -81,7 +81,8 @@ class ArbitrageEngine:
                 return {
                     "executed": False,
                     "reason": sim_res["rejection_reason"],
-                    "opportunity_id": opp.id
+                    "opportunity_id": opp.id,
+                    "profit": profit_analysis.get("net_profit", 0.0)
                 }
 
             # 2. Risk Manager Validation
@@ -99,7 +100,8 @@ class ArbitrageEngine:
                 return {
                     "executed": False,
                     "reason": f"Risk check failed: {risk_res['reason']}",
-                    "opportunity_id": opp.id
+                    "opportunity_id": opp.id,
+                    "profit": profit_analysis.get("net_profit", 0.0)
                 }
 
             # 3. Execution (Simulation / Paper / Testnet)
