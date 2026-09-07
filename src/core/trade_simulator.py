@@ -47,16 +47,27 @@ class TradeSimulator:
                 "profit_analysis": None
             }
 
-        # 2. Simulate Leg 1: GAT -> TOKEN
-        try:
-            tokens_out = self.dex_adapter.get_quote(initial_gat, base_token, target_token)
-        except Exception as e:
-            return {
-                "valid": False,
-                "rejection_reason": f"Failed quote on Leg 1 (GAT -> TOKEN): {e}",
-                "safety_analysis": safety_res,
-                "profit_analysis": None
-            }
+        # Check if safety analysis fetched quotes for the exact same initial_gat amount
+        can_reuse_quotes = (
+            safety_res.get("quote_amount_in") == initial_gat
+            and safety_res.get("leg1_quote") is not None
+            and safety_res.get("leg2_quote") is not None
+        )
+
+        # 2. Leg 1: GAT -> TOKEN
+        # Optimization: Reuse quote already fetched during safety_analyzer's sellability test if initial_gat matches,
+        # avoiding redundant DEX adapter / RPC quote calls.
+        tokens_out = safety_res.get("leg1_quote") if can_reuse_quotes else None
+        if tokens_out is None:
+            try:
+                tokens_out = self.dex_adapter.get_quote(initial_gat, base_token, target_token)
+            except Exception as e:
+                return {
+                    "valid": False,
+                    "rejection_reason": f"Failed quote on Leg 1 (GAT -> TOKEN): {e}",
+                    "safety_analysis": safety_res,
+                    "profit_analysis": None
+                }
 
         if tokens_out <= 0:
             return {
@@ -70,16 +81,19 @@ class TradeSimulator:
         buy_tax = safety_res.get("buy_tax", 0.0)
         tokens_received = tokens_out * (1.0 - (buy_tax / 100.0))
 
-        # 3. Simulate Leg 2: TOKEN -> GAT
-        try:
-            final_gat_gross = self.dex_adapter.get_quote(tokens_received, target_token, base_token)
-        except Exception as e:
-            return {
-                "valid": False,
-                "rejection_reason": f"Failed quote on Leg 2 (TOKEN -> GAT): {e}",
-                "safety_analysis": safety_res,
-                "profit_analysis": None
-            }
+        # 3. Leg 2: TOKEN -> GAT
+        # Optimization: Reuse quote already fetched during safety_analyzer's sellability test if initial_gat matches.
+        final_gat_gross = safety_res.get("leg2_quote") if can_reuse_quotes else None
+        if final_gat_gross is None:
+            try:
+                final_gat_gross = self.dex_adapter.get_quote(tokens_received, target_token, base_token)
+            except Exception as e:
+                return {
+                    "valid": False,
+                    "rejection_reason": f"Failed quote on Leg 2 (TOKEN -> GAT): {e}",
+                    "safety_analysis": safety_res,
+                    "profit_analysis": None
+                }
 
         if final_gat_gross <= 0:
             return {
