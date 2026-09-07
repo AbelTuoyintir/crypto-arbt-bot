@@ -41,7 +41,10 @@ class TokenSafetyAnalyzer:
                 "reasons": ["Invalid target token or target is base token"],
                 "buy_tax": 0.0,
                 "sell_tax": 0.0,
-                "sellable": False
+                "sellable": False,
+                "quote_amount_in": test_amount_gat,
+                "leg1_quote": None,
+                "leg2_quote": None
             }
 
         # 2. Contract Status Checks (Is Paused / Blacklist / Whitelist restrictions)
@@ -83,14 +86,20 @@ class TokenSafetyAnalyzer:
                 "reasons": rejection_reasons,
                 "buy_tax": buy_tax,
                 "sell_tax": sell_tax,
-                "sellable": False
+                "sellable": False,
+                "quote_amount_in": test_amount_gat,
+                "leg1_quote": None,
+                "leg2_quote": None
             }
 
         # Round-trip Simulation with DEX Adapter if available
         sellable = True
+        leg1_quote = None
+        leg2_quote = None
         if self.dex_adapter:
             # Step 1: Buy GAT -> TOKEN
             tokens_received = self.dex_adapter.get_quote(test_amount_gat, self.base_token_address, token_address)
+            leg1_quote = tokens_received
             tokens_after_buy_tax = tokens_received * (1 - (buy_tax / 100.0))
 
             if tokens_after_buy_tax <= 0:
@@ -100,6 +109,7 @@ class TokenSafetyAnalyzer:
             else:
                 # Step 2: Sell TOKEN -> GAT
                 gat_received = self.dex_adapter.get_quote(tokens_after_buy_tax, token_address, self.base_token_address)
+                leg2_quote = gat_received
                 gat_after_sell_tax = gat_received * (1 - (sell_tax / 100.0))
 
                 if gat_after_sell_tax <= 0:
@@ -140,5 +150,9 @@ class TokenSafetyAnalyzer:
             "reasons": rejection_reasons,
             "buy_tax": buy_tax,
             "sell_tax": sell_tax,
-            "sellable": sellable
+            "sellable": sellable,
+            # Quote cache parameters to allow downstream simulation reuse when initial_gat == quote_amount_in
+            "quote_amount_in": test_amount_gat,
+            "leg1_quote": leg1_quote,
+            "leg2_quote": leg2_quote
         }
