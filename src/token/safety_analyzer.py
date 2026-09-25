@@ -41,7 +41,10 @@ class TokenSafetyAnalyzer:
                 "reasons": ["Invalid target token or target is base token"],
                 "buy_tax": 0.0,
                 "sell_tax": 0.0,
-                "sellable": False
+                "sellable": False,
+                "test_amount_gat": test_amount_gat,
+                "tokens_received": 0.0,
+                "final_gat_gross": 0.0
             }
 
         # 2. Contract Status Checks (Is Paused / Blacklist / Whitelist restrictions)
@@ -83,11 +86,16 @@ class TokenSafetyAnalyzer:
                 "reasons": rejection_reasons,
                 "buy_tax": buy_tax,
                 "sell_tax": sell_tax,
-                "sellable": False
+                "sellable": False,
+                "test_amount_gat": test_amount_gat,
+                "tokens_received": 0.0,
+                "final_gat_gross": 0.0
             }
 
         # Round-trip Simulation with DEX Adapter if available
         sellable = True
+        tokens_received = 0.0
+        gat_received = 0.0
         if self.dex_adapter:
             # Step 1: Buy GAT -> TOKEN
             tokens_received = self.dex_adapter.get_quote(test_amount_gat, self.base_token_address, token_address)
@@ -140,5 +148,8 @@ class TokenSafetyAnalyzer:
             "reasons": rejection_reasons,
             "buy_tax": buy_tax,
             "sell_tax": sell_tax,
-            "sellable": sellable
+            "sellable": sellable,
+            "test_amount_gat": test_amount_gat,
+            "tokens_received": tokens_received if self.dex_adapter else 0.0,
+            "final_gat_gross": gat_received if self.dex_adapter else 0.0
         }
