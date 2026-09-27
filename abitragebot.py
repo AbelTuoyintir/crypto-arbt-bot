@@ -2,6 +2,7 @@ import os
 import time
 import asyncio
 import json
+import functools
 import aiohttp
 from web3 import Web3, AsyncWeb3
 from web3.middleware import geth_poa_middleware
@@ -56,8 +57,9 @@ async_w3 = AsyncWeb3(AsyncWeb3.AsyncHTTPProvider(RPC_URL))
 async_w3.middleware_onion.inject(geth_poa_middleware, layer=0)
 
 # ----------------- Helper Functions -----------------
+@functools.lru_cache(maxsize=256)
 def get_pair_address(token_a, token_b):
-    """Compute PancakeSwap pair address (deterministic)."""
+    """Compute PancakeSwap pair address (deterministic). Cached with LRU to avoid redundant keccak hashing in loops."""
     token0, token1 = (token_a, token_b) if token_a.lower() < token_b.lower() else (token_b, token_a)
     salt = Web3.solidity_keccak(['address', 'address'], [token0, token1])
     # PancakeSwap init code hash

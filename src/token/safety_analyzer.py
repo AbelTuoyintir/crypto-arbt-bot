@@ -1,5 +1,6 @@
 import logging
 from typing import Dict, Any, Optional
+from web3 import Web3
 from config.settings import settings
 from src.dex.base_adapter import BaseDEXAdapter
 
@@ -29,19 +30,22 @@ class TokenSafetyAnalyzer:
         rejection_reasons = []
         risk_score = 0.0
 
-        if token_info is None:
+        if token_info is None or not isinstance(token_info, dict):
             token_info = {}
 
-        # 1. Address Validation
-        if not token_address or token_address.lower() == self.base_token_address.lower():
+        # 1. Address & Input Type Validation
+        if not isinstance(token_address, str) or not token_address or token_address.lower() == self.base_token_address.lower():
             return {
                 "safe": False,
                 "risk_score": 100.0,
                 "risk_level": "BLOCKED",
-                "reasons": ["Invalid target token or target is base token"],
+                "reasons": ["Invalid target token address or target is base token"],
                 "buy_tax": 0.0,
                 "sell_tax": 0.0,
-                "sellable": False
+                "sellable": False,
+                "test_amount_gat": test_amount_gat,
+                "tokens_received": 0.0,
+                "final_gat_gross": 0.0
             }
 
         # 2. Contract Status Checks (Is Paused / Blacklist / Whitelist restrictions)
@@ -83,11 +87,16 @@ class TokenSafetyAnalyzer:
                 "reasons": rejection_reasons,
                 "buy_tax": buy_tax,
                 "sell_tax": sell_tax,
-                "sellable": False
+                "sellable": False,
+                "test_amount_gat": test_amount_gat,
+                "tokens_received": 0.0,
+                "final_gat_gross": 0.0
             }
 
         # Round-trip Simulation with DEX Adapter if available
         sellable = True
+        tokens_received = 0.0
+        gat_received = 0.0
         if self.dex_adapter:
             # Step 1: Buy GAT -> TOKEN
             tokens_received = self.dex_adapter.get_quote(test_amount_gat, self.base_token_address, token_address)
@@ -140,5 +149,8 @@ class TokenSafetyAnalyzer:
             "reasons": rejection_reasons,
             "buy_tax": buy_tax,
             "sell_tax": sell_tax,
-            "sellable": sellable
+            "sellable": sellable,
+            "test_amount_gat": test_amount_gat,
+            "tokens_received": tokens_received if self.dex_adapter else 0.0,
+            "final_gat_gross": gat_received if self.dex_adapter else 0.0
         }
