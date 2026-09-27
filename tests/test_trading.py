@@ -52,3 +52,33 @@ def test_slippage_failure():
     sim = TradeSimulator(dex_adapter=dex, safety_analyzer=analyzer)
     res = sim.simulate_arbitrage_cycle(target_token='0xSLIP', initial_gat=100.0, token_info={'liquidity': 50000.0, 'buy_tax': 1.0, 'sell_tax': 1.0})
     assert res["valid"] is False
+
+def test_quote_reuse_and_mismatched_amount_fallback():
+    class TrackingDEX(MockTradingDEX):
+        def __init__(self):
+            super().__init__(output_multiplier=1.05, gas_cost=0.001)
+            self.calls = []
+
+        def get_quote(self, amount_in, token_in, token_out):
+            self.calls.append((amount_in, token_in, token_out))
+            return amount_in * self.output_multiplier
+
+    dex = TrackingDEX()
+    analyzer = TokenSafetyAnalyzer(dex_adapter=dex)
+    sim = TradeSimulator(dex_adapter=dex, safety_analyzer=analyzer)
+
+    # Cycle 1: initial_gat=100.0 matches test_amount_gat=100.0 -> quotes reused
+    res1 = sim.simulate_arbitrage_cycle(target_token='0xMATCH', initial_gat=100.0, token_info={'liquidity': 50000.0})
+    assert res1["valid"] is True
+    # 2 calls made during safety_analyzer, 0 extra calls in simulator
+    assert len(dex.calls) == 2
+
+    # Reset tracking
+    dex.calls.clear()
+
+    # Cycle 2: simulate_arbitrage_cycle with initial_gat=200.0 -> quotes calculated for 200.0 and reused
+    res2 = sim.simulate_arbitrage_cycle(target_token='0xMISMATCH', initial_gat=200.0, token_info={'liquidity': 50000.0})
+    assert res2["valid"] is True
+    # Exactly 2 calls were made during analyze_token for 200.0 GAT
+    assert len(dex.calls) == 2
+    assert dex.calls[0][0] == 200.0
