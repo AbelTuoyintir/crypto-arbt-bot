@@ -57,3 +57,15 @@ def test_transfer_restricted_token():
     analyzer = TokenSafetyAnalyzer()
     res = analyzer.analyze_token(RESTRICTED_TOKEN, {'transfer_restricted': True})
     assert res["safe"] is False
+
+def test_invalid_input_types():
+    analyzer = TokenSafetyAnalyzer()
+    # Non-string token address (e.g. int)
+    res_int = analyzer.analyze_token(12345)
+    assert res_int["safe"] is False
+    assert res_int["risk_score"] == 100.0
+    assert res_int["risk_level"] == "BLOCKED"
+
+    # Non-dict token_info
+    res_info = analyzer.analyze_token('0xSAFE', token_info="invalid_info")
+    assert res_info["safe"] is False

@@ -30,16 +30,16 @@ class TokenSafetyAnalyzer:
         rejection_reasons = []
         risk_score = 0.0
 
-        if token_info is None:
+        if token_info is None or not isinstance(token_info, dict):
             token_info = {}
 
-        # 1. Address Validation
-        if not token_address or not Web3.is_address(token_address) or token_address.lower() == self.base_token_address.lower():
+        # 1. Address & Input Type Validation
+        if not isinstance(token_address, str) or not token_address or token_address.lower() == self.base_token_address.lower():
             return {
                 "safe": False,
                 "risk_score": 100.0,
                 "risk_level": "BLOCKED",
-                "reasons": ["Invalid target token address format or target is base token"],
+                "reasons": ["Invalid target token address or target is base token"],
                 "buy_tax": 0.0,
                 "sell_tax": 0.0,
                 "sellable": False
