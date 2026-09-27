@@ -31,11 +31,15 @@ class MockTradingDEX(BaseDEXAdapter):
     def get_pool_price(self, token_in, token_out):
         return self.output_multiplier
 
+GOOD_TOKEN = '0x8888888888888888888888888888888888888888'
+BAD_TOKEN = '0x9999999999999999999999999999999999999999'
+SLIP_TOKEN = '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+
 def test_successful_simulation():
     dex = MockTradingDEX(output_multiplier=1.05, gas_cost=0.001)
     analyzer = TokenSafetyAnalyzer(dex_adapter=dex)
     sim = TradeSimulator(dex_adapter=dex, safety_analyzer=analyzer)
-    res = sim.simulate_arbitrage_cycle(target_token='0xGOOD', initial_gat=100.0, token_info={'liquidity': 50000.0, 'buy_tax': 0.0, 'sell_tax': 0.0})
+    res = sim.simulate_arbitrage_cycle(target_token=GOOD_TOKEN, initial_gat=100.0, token_info={'liquidity': 50000.0, 'buy_tax': 0.0, 'sell_tax': 0.0})
     assert res["valid"] is True
     assert res["profit_analysis"]["net_profit"] > 0
 
@@ -43,14 +47,14 @@ def test_failed_simulation_unprofitable():
     dex = MockTradingDEX(output_multiplier=0.98, gas_cost=0.001)
     analyzer = TokenSafetyAnalyzer(dex_adapter=dex)
     sim = TradeSimulator(dex_adapter=dex, safety_analyzer=analyzer)
-    res = sim.simulate_arbitrage_cycle(target_token='0xBAD', initial_gat=100.0, token_info={'liquidity': 50000.0})
+    res = sim.simulate_arbitrage_cycle(target_token=BAD_TOKEN, initial_gat=100.0, token_info={'liquidity': 50000.0})
     assert res["valid"] is False
 
 def test_slippage_failure():
     dex = MockTradingDEX(output_multiplier=1.01, gas_cost=0.001)
     analyzer = TokenSafetyAnalyzer(dex_adapter=dex)
     sim = TradeSimulator(dex_adapter=dex, safety_analyzer=analyzer)
-    res = sim.simulate_arbitrage_cycle(target_token='0xSLIP', initial_gat=100.0, token_info={'liquidity': 50000.0, 'buy_tax': 1.0, 'sell_tax': 1.0})
+    res = sim.simulate_arbitrage_cycle(target_token=SLIP_TOKEN, initial_gat=100.0, token_info={'liquidity': 50000.0, 'buy_tax': 1.0, 'sell_tax': 1.0})
     assert res["valid"] is False
 
 def test_quote_reuse_and_mismatched_amount_fallback():

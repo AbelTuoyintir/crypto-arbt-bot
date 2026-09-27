@@ -1,5 +1,6 @@
 import logging
 from typing import Dict, Any, Optional
+from web3 import Web3
 from config.settings import settings
 from src.dex.base_adapter import BaseDEXAdapter
 
