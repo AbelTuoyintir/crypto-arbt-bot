@@ -34,11 +34,11 @@ class Opportunity(Base):
     gas_cost = Column(Float, nullable=False, default=0.0)
     dex_fees = Column(Float, nullable=False, default=0.0)
     slippage = Column(Float, nullable=False, default=0.0)
-    estimated_profit = Column(Float, nullable=False, default=0.0)
+    estimated_profit = Column(Float, nullable=False, default=0.0, index=True)
     profit_percentage = Column(Float, nullable=False, default=0.0)
-    risk_score = Column(Float, nullable=False, default=0.0)
-    status = Column(String(32), nullable=False, default='pending')  # pending, rejected, executed, failed
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    risk_score = Column(Float, nullable=False, default=0.0, index=True)
+    status = Column(String(32), nullable=False, default='pending', index=True)  # pending, rejected, executed, failed
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
 
 class Trade(Base):
     __tablename__ = 'trades'
@@ -51,9 +51,9 @@ class Trade(Base):
     final_gat = Column(Float, nullable=False)
     gas_used = Column(Float, nullable=False, default=0.0)
     actual_profit = Column(Float, nullable=False, default=0.0)
-    status = Column(String(32), nullable=False)  # success, failed, reverted
+    status = Column(String(32), nullable=False, index=True)  # success, failed, reverted
     error_message = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
 
 # Database Engine & Session setup
 engine = create_engine(settings.DATABASE_URL, echo=False)
