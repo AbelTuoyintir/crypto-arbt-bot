@@ -7,3 +7,7 @@
 
 **Learning:** `TokenSafetyAnalyzer` and `TradeSimulator` sequential phases were executing duplicate DEX adapter quotes (`Leg 1` and `Leg 2`) for identical token pairs and test amounts, doubling execution time per trade cycle. Validating `test_amount_gat == initial_gat` allows reusing pre-calculated quotes safely while preserving exact profitability logic and price impact accuracy.
 **Action:** Always pass through and reuse intermediate calculation results (like quotes and gas estimations) across pipeline stages when input parameters match.
+## 2026-09-26 - Cache Immutable ERC20 Metadata in Token Utilities
+
+**Learning:** Web3 contract calls to fetch token `name()`, `symbol()`, and `decimals()` incur 3 synchronous HTTP RPC calls per token lookup (~100-300ms network latency). Because ERC20 token metadata is immutable, caching token metadata in-memory per contract checksum address completely eliminates redundant network calls during scanning loops.
+**Action:** Always cache immutable token metadata per checksum address and return copies of cached dictionaries to avoid mutation side-effects.
