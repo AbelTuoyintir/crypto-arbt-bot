@@ -37,36 +37,39 @@ class MarketScanner:
                     continue
 
                 try:
-                    # Leg 1 Quote
-                    tokens_out = dex_adapter.get_quote(initial_gat, base_token, token_address)
-                    logger.info(f"[QUOTE]\nExpected output: {tokens_out:,.2f} {symbol}")
-
-                    # Leg 2 Quote (Sell Test)
-                    buy_tax = token.get("buy_tax", 0.0)
-                    sell_tax = token.get("sell_tax", 0.0)
-                    tokens_received = tokens_out * (1 - (buy_tax / 100.0))
-                    final_gat_gross = dex_adapter.get_quote(tokens_received, token_address, base_token)
-                    final_gat_after_taxes = final_gat_gross * (1 - (sell_tax / 100.0))
-                    logger.info(f"[SELL TEST]\nExpected {settings.BASE_TOKEN_SYMBOL}: {final_gat_after_taxes:,.2f}")
-
-                    # Cost breakdown
-                    gas_cost = dex_adapter.estimate_gas(base_token, token_address, initial_gat) * 2
-                    dex_fees = initial_gat * 0.0025 * 2
-                    slippage = initial_gat * (settings.MAX_SLIPPAGE_PERCENT / 100.0)
-                    logger.info(f"[COST]\nGas: {gas_cost:.4f} {settings.BASE_TOKEN_SYMBOL}\nDEX Fees: {dex_fees:.4f} {settings.BASE_TOKEN_SYMBOL}\nSlippage: {slippage:.4f} {settings.BASE_TOKEN_SYMBOL}")
-
-                    # Net profit
-                    net_gat = final_gat_after_taxes - gas_cost - slippage
-                    profit = net_gat - initial_gat
-                    logger.info(f"[NET]\nInitial: {initial_gat:.2f} {settings.BASE_TOKEN_SYMBOL}\nFinal: {net_gat:.2f} {settings.BASE_TOKEN_SYMBOL}\nProfit: {profit:.2f} {settings.BASE_TOKEN_SYMBOL}")
-
-                    # Process through arbitrage engine
+                    # Optimization: Delegate simulation directly to ArbitrageEngine first
+                    # to eliminate duplicate DEX quotes and gas estimation calls per scan cycle.
                     res = self.engine.process_opportunity(
                         dex_name=dex_name,
                         target_token=token_address,
                         initial_gat=initial_gat,
                         token_info=token
                     )
+
+                    sim_res = res.get("sim_res") or {}
+                    profit_analysis = sim_res.get("profit_analysis") or {}
+                    safety_analysis = sim_res.get("safety_analysis") or {}
+
+                    # Leg 1 Quote
+                    tokens_out = sim_res.get("tokens_received", 0.0)
+                    logger.info(f"[QUOTE]\nExpected output: {tokens_out:,.2f} {symbol}")
+
+                    # Leg 2 Quote (Sell Test)
+                    final_gat_gross = sim_res.get("final_gat_gross", 0.0)
+                    sell_tax = safety_analysis.get("sell_tax", token.get("sell_tax", 0.0))
+                    final_gat_after_taxes = final_gat_gross * (1 - (sell_tax / 100.0))
+                    logger.info(f"[SELL TEST]\nExpected {settings.BASE_TOKEN_SYMBOL}: {final_gat_after_taxes:,.2f}")
+
+                    # Cost breakdown
+                    gas_cost = sim_res.get("total_gas_gat", 0.0)
+                    dex_fees = initial_gat * 0.0025 * 2
+                    slippage = initial_gat * (settings.MAX_SLIPPAGE_PERCENT / 100.0)
+                    logger.info(f"[COST]\nGas: {gas_cost:.4f} {settings.BASE_TOKEN_SYMBOL}\nDEX Fees: {dex_fees:.4f} {settings.BASE_TOKEN_SYMBOL}\nSlippage: {slippage:.4f} {settings.BASE_TOKEN_SYMBOL}")
+
+                    # Net profit
+                    profit = profit_analysis.get("net_profit", 0.0)
+                    net_gat = initial_gat + profit
+                    logger.info(f"[NET]\nInitial: {initial_gat:.2f} {settings.BASE_TOKEN_SYMBOL}\nFinal: {net_gat:.2f} {settings.BASE_TOKEN_SYMBOL}\nProfit: {profit:.2f} {settings.BASE_TOKEN_SYMBOL}")
 
                     results.append({
                         "token": symbol,
