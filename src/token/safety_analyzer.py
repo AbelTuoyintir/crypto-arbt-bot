@@ -34,7 +34,7 @@ class TokenSafetyAnalyzer:
             token_info = {}
 
         # 1. Address & Input Type Validation
-        if not isinstance(token_address, str) or not Web3.is_address(token_address) or token_address.lower() == self.base_token_address.lower():
+        if not isinstance(token_address, str) or not token_address or not Web3.is_address(token_address) or token_address.lower() == self.base_token_address.lower():
             return {
                 "safe": False,
                 "risk_score": 100.0,

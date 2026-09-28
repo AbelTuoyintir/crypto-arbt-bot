@@ -81,7 +81,8 @@ class ArbitrageEngine:
                 return {
                     "executed": False,
                     "reason": sim_res["rejection_reason"],
-                    "opportunity_id": opp.id
+                    "opportunity_id": opp.id,
+                    "sim_res": sim_res
                 }
 
             # 2. Risk Manager Validation
@@ -99,7 +100,8 @@ class ArbitrageEngine:
                 return {
                     "executed": False,
                     "reason": f"Risk check failed: {risk_res['reason']}",
-                    "opportunity_id": opp.id
+                    "opportunity_id": opp.id,
+                    "sim_res": sim_res
                 }
 
             # 3. Execution (Simulation / Paper / Testnet)
@@ -140,7 +142,8 @@ class ArbitrageEngine:
                 "opportunity_id": opp.id,
                 "trade_id": trade.id,
                 "profit": actual_profit if trade_status == "success" else 0.0,
-                "mode": settings.TRADING_MODE
+                "mode": settings.TRADING_MODE,
+                "sim_res": sim_res
             }
 
         finally:
