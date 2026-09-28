@@ -71,6 +71,9 @@ def test_quote_reuse_and_mismatched_amount_fallback():
     analyzer = TokenSafetyAnalyzer(dex_adapter=dex)
     sim = TradeSimulator(dex_adapter=dex, safety_analyzer=analyzer)
 
+    match_token = '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'
+    mismatch_token = '0xcccccccccccccccccccccccccccccccccccccccc'
+
     # Cycle 1: initial_gat=100.0 matches test_amount_gat=100.0 -> quotes reused
     res1 = sim.simulate_arbitrage_cycle(target_token=GOOD_TOKEN, initial_gat=100.0, token_info={'liquidity': 50000.0})
     assert res1["valid"] is True
