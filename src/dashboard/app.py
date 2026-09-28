@@ -223,10 +223,12 @@ def add_security_headers(response):
 def api_metrics():
     db = SessionLocal()
     try:
-        total_opps = db.query(Opportunity).count()
-        total_trades = db.query(Trade).count()
-        successful_trades = db.query(Trade).filter(Trade.status == 'success').all()
-        total_profit = sum(t.actual_profit for t in successful_trades)
+        # Fast SQL aggregation queries (prevents loading all Trade ORM objects into Python memory)
+        total_opps = db.query(func.count(Opportunity.id)).scalar() or 0
+        total_trades = db.query(func.count(Trade.id)).scalar() or 0
+        total_profit = db.query(func.coalesce(func.sum(Trade.actual_profit), 0.0)).filter(
+            Trade.status == 'success'
+        ).scalar() or 0.0
 
         return jsonify({
             "status": "online",
