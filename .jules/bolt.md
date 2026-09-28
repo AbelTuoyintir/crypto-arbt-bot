@@ -11,3 +11,8 @@
 
 **Learning:** Web3 contract calls to fetch token `name()`, `symbol()`, and `decimals()` incur 3 synchronous HTTP RPC calls per token lookup (~100-300ms network latency). Because ERC20 token metadata is immutable, caching token metadata in-memory per contract checksum address completely eliminates redundant network calls during scanning loops.
 **Action:** Always cache immutable token metadata per checksum address and return copies of cached dictionaries to avoid mutation side-effects.
+
+## 2026-10-15 - Delegate MarketScanner Directly to Engine Simulation Pipeline
+
+**Learning:** `MarketScanner` was making manual preliminary DEX `get_quote` and `estimate_gas` calls prior to passing opportunities to `ArbitrageEngine.process_opportunity`. Because the engine's `TradeSimulator` performs its own simulation cycle, this doubled the total DEX quote calls (4 quote calls + 3 gas calls per token pair scan). Having `process_opportunity` return `sim_res` and delegating directly in `MarketScanner` eliminates all redundant preliminary DEX quotes and cuts scan overhead by ~50%.
+**Action:** Always structure scanner loops to delegate simulation/quoting to the downstream pipeline engine once and reuse returned simulation results for logging and analysis.

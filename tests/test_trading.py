@@ -72,7 +72,7 @@ def test_quote_reuse_and_mismatched_amount_fallback():
     sim = TradeSimulator(dex_adapter=dex, safety_analyzer=analyzer)
 
     # Cycle 1: initial_gat=100.0 matches test_amount_gat=100.0 -> quotes reused
-    res1 = sim.simulate_arbitrage_cycle(target_token='0xMATCH', initial_gat=100.0, token_info={'liquidity': 50000.0})
+    res1 = sim.simulate_arbitrage_cycle(target_token=GOOD_TOKEN, initial_gat=100.0, token_info={'liquidity': 50000.0})
     assert res1["valid"] is True
     # 2 calls made during safety_analyzer, 0 extra calls in simulator
     assert len(dex.calls) == 2
@@ -81,7 +81,7 @@ def test_quote_reuse_and_mismatched_amount_fallback():
     dex.calls.clear()
 
     # Cycle 2: simulate_arbitrage_cycle with initial_gat=200.0 -> quotes calculated for 200.0 and reused
-    res2 = sim.simulate_arbitrage_cycle(target_token='0xMISMATCH', initial_gat=200.0, token_info={'liquidity': 50000.0})
+    res2 = sim.simulate_arbitrage_cycle(target_token='0x2222222222222222222222222222222222222222', initial_gat=200.0, token_info={'liquidity': 50000.0})
     assert res2["valid"] is True
     # Exactly 2 calls were made during analyze_token for 200.0 GAT
     assert len(dex.calls) == 2
