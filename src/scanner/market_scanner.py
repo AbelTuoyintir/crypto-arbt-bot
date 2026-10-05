@@ -83,6 +83,76 @@ class MarketScanner:
 
         return results
 
+    def scan_triangular_market(
+        self,
+        token_pairs: List[Dict[str, Any]],
+        initial_gat: float = 100.0
+    ) -> List[Dict[str, Any]]:
+        """
+        Scan all supported DEXs for triangular arbitrage opportunities across token pairs (Token A, Token B).
+        `token_pairs` should be a list of dicts with:
+        {'token_a': {'address': ..., 'symbol': ...}, 'token_b': {'address': ..., 'symbol': ...}}
+        Emits structured logs: [TRIANGULAR SCAN], [LEG 1 QUOTE], [LEG 2 QUOTE], [LEG 3 QUOTE], [COST], [NET], [DECISION].
+        """
+        results = []
+
+        for pair in token_pairs:
+            token_a = pair.get("token_a", {})
+            token_b = pair.get("token_b", {})
+            addr_a = token_a.get("address")
+            addr_b = token_b.get("address")
+            sym_a = token_a.get("symbol", "TOKEN_A")
+            sym_b = token_b.get("symbol", "TOKEN_B")
+
+            logger.info(f"\n[TRIANGULAR SCAN]\n{settings.BASE_TOKEN_SYMBOL} -> {sym_a} -> {sym_b} -> {settings.BASE_TOKEN_SYMBOL}")
+
+            for dex_name in self.dex_manager.list_adapters():
+                dex_adapter = self.dex_manager.get_adapter(dex_name)
+                if not dex_adapter:
+                    continue
+
+                try:
+                    res = self.engine.process_triangular_opportunity(
+                        dex_name=dex_name,
+                        token_a=addr_a,
+                        token_b=addr_b,
+                        initial_gat=initial_gat,
+                        token_a_info=token_a,
+                        token_b_info=token_b
+                    )
+
+                    sim_res = res.get("sim_res") or {}
+                    profit_analysis = sim_res.get("profit_analysis") or {}
+
+                    t_a_out = sim_res.get("token_a_received", 0.0)
+                    t_b_out = sim_res.get("token_b_received", 0.0)
+                    final_gat = sim_res.get("final_gat_gross", 0.0)
+
+                    logger.info(f"[LEG 1 QUOTE]\nExpected {sym_a}: {t_a_out:,.2f}")
+                    logger.info(f"[LEG 2 QUOTE]\nExpected {sym_b}: {t_b_out:,.2f}")
+                    logger.info(f"[LEG 3 QUOTE]\nExpected {settings.BASE_TOKEN_SYMBOL}: {final_gat:,.2f}")
+
+                    gas_cost = sim_res.get("total_gas_gat", 0.0)
+                    dex_fees = initial_gat * 0.0025 * 3
+                    slippage = initial_gat * (settings.MAX_SLIPPAGE_PERCENT / 100.0)
+                    logger.info(f"[COST]\nGas: {gas_cost:.4f} {settings.BASE_TOKEN_SYMBOL}\nDEX Fees: {dex_fees:.4f} {settings.BASE_TOKEN_SYMBOL}\nSlippage: {slippage:.4f} {settings.BASE_TOKEN_SYMBOL}")
+
+                    profit = profit_analysis.get("net_profit", 0.0)
+                    net_gat = initial_gat + profit
+                    logger.info(f"[NET]\nInitial: {initial_gat:.2f} {settings.BASE_TOKEN_SYMBOL}\nFinal: {net_gat:.2f} {settings.BASE_TOKEN_SYMBOL}\nProfit: {profit:.2f} {settings.BASE_TOKEN_SYMBOL}")
+
+                    results.append({
+                        "pair": f"{sym_a}->{sym_b}",
+                        "dex": dex_name,
+                        "profit": profit,
+                        "engine_res": res
+                    })
+
+                except Exception as e:
+                    logger.error(f"Error scanning triangular path {sym_a}->{sym_b} on {dex_name}: {e}")
+
+        return results
+
     def start_scanning_loop(self, target_tokens: List[Dict[str, Any]], interval_seconds: int = 5, iterations: int = None):
         """Run continuous market scanning loop."""
         logger.info(f"Starting MarketScanner loop (interval: {interval_seconds}s)...")
