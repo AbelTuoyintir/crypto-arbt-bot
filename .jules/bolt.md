@@ -16,3 +16,8 @@
 
 **Learning:** `MarketScanner` was making manual preliminary DEX `get_quote` and `estimate_gas` calls prior to passing opportunities to `ArbitrageEngine.process_opportunity`. Because the engine's `TradeSimulator` performs its own simulation cycle, this doubled the total DEX quote calls (4 quote calls + 3 gas calls per token pair scan). Having `process_opportunity` return `sim_res` and delegating directly in `MarketScanner` eliminates all redundant preliminary DEX quotes and cuts scan overhead by ~50%.
 **Action:** Always structure scanner loops to delegate simulation/quoting to the downstream pipeline engine once and reuse returned simulation results for logging and analysis.
+
+## 2026-11-18 - Use Direct SQL Aggregations in Dashboard API Metrics
+
+**Learning:** Fetching all ORM records (`db.query(Model).all()`) to sum values in Python causes O(N) memory allocation and ORM object instantiation per request. Using SQL-level aggregation (`func.coalesce(func.sum(...), 0.0)`) offloads computation to the database engine, returning a single scalar float in O(1) memory.
+**Action:** Always prefer SQL scalar aggregations (`func.sum()`, `func.count()`) over Python in-memory iterations when computing endpoint metrics or total stats.
