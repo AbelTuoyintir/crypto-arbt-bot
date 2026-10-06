@@ -42,3 +42,14 @@ def test_market_scanner_no_duplicate_quotes():
     # and 2 gas estimation calls during the engine simulation, not 4 quote calls & 3 gas calls.
     assert dex.quote_calls == 2
     assert dex.gas_calls == 2
+
+def test_generate_triangular_pairs():
+    tokens = [
+        {"address": "0x111", "symbol": "A"},
+        {"address": "0x222", "symbol": "B"},
+        {"address": "0x333", "symbol": "C"}
+    ]
+    pairs = MarketScanner.generate_triangular_pairs(tokens)
+    assert len(pairs) == 6
+    assert pairs[0]["token_a"]["symbol"] == "A"
+    assert pairs[0]["token_b"]["symbol"] == "B"
