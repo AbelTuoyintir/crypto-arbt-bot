@@ -21,3 +21,8 @@
 
 **Learning:** Fetching all ORM records (`db.query(Model).all()`) to sum values in Python causes O(N) memory allocation and ORM object instantiation per request. Using SQL-level aggregation (`func.coalesce(func.sum(...), 0.0)`) offloads computation to the database engine, returning a single scalar float in O(1) memory.
 **Action:** Always prefer SQL scalar aggregations (`func.sum()`, `func.count()`) over Python in-memory iterations when computing endpoint metrics or total stats.
+
+## 2026-12-05 - Explicit Join Conditions for Unmapped ORM Foreign Keys
+
+**Learning:** When executing SQL aggregations across SQLAlchemy models (`Trade` and `Opportunity`) that lack explicit ORM relationship mappings, calling `db.query(...).join(Opportunity)` fails due to ambiguous join targets. Explicitly passing the join condition (`.join(Opportunity, Trade.opportunity_id == Opportunity.id)`) generates optimized SQL queries without requiring full model redefinitions.
+**Action:** Always supply explicit join conditions (`.join(TargetModel, ForeignCondition)`) when performing cross-table aggregations on models without implicit ORM relationship mappings.

@@ -85,12 +85,21 @@ class ArbitrageEngine:
                     "sim_res": sim_res
                 }
 
+            # Calculate confidence score
+            conf_res = self.calculate_opportunity_confidence(
+                profit_percentage=profit_analysis.get("profit_percentage", 0.0),
+                risk_score=safety_analysis.get("risk_score", 0.0),
+                gas_cost_gat=sim_res.get("total_gas_gat", 0.0),
+                initial_gat=initial_gat
+            )
+
             # 2. Risk Manager Validation
             risk_res = self.risk_manager.validate_trade(
                 trade_amount_gat=initial_gat,
                 gas_cost_gat=sim_res.get("total_gas_gat", 0.0),
                 profit_percent=profit_analysis.get("profit_percentage", 0.0),
-                token_risk_score=safety_analysis.get("risk_score", 0.0)
+                token_risk_score=safety_analysis.get("risk_score", 0.0),
+                confidence_score=conf_res.get("confidence_score")
             )
 
             if not risk_res["approved"]:
@@ -134,8 +143,7 @@ class ArbitrageEngine:
             opp.status = "executed" if trade_status == "success" else "failed"
             db.commit()
 
-            if trade_status == "success":
-                self.risk_manager.record_trade_result(actual_profit)
+            self.risk_manager.record_trade_result(actual_profit, success=(trade_status == "success"))
 
             return {
                 "executed": trade_status == "success",
@@ -286,7 +294,8 @@ class ArbitrageEngine:
                 trade_amount_gat=initial_gat,
                 gas_cost_gat=sim_res.get("total_gas_gat", 0.0),
                 profit_percent=profit_analysis.get("profit_percentage", 0.0),
-                token_risk_score=safety_analysis.get("risk_score", 0.0)
+                token_risk_score=safety_analysis.get("risk_score", 0.0),
+                confidence_score=conf_res.get("confidence_score")
             )
 
             if not risk_res["approved"]:
@@ -348,8 +357,7 @@ class ArbitrageEngine:
             opp.status = "executed" if trade_status == "success" else "failed"
             db.commit()
 
-            if trade_status == "success":
-                self.risk_manager.record_trade_result(actual_profit)
+            self.risk_manager.record_trade_result(actual_profit, success=(trade_status == "success"))
 
             return {
                 "executed": trade_status == "success",

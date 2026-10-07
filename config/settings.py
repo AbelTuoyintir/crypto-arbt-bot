@@ -37,4 +37,10 @@ class Settings(BaseModel):
     MAX_GAS_COST: float = float(os.getenv("MAX_GAS_COST", "0.01"))
     MAX_TOKEN_RISK_SCORE: float = float(os.getenv("MAX_TOKEN_RISK_SCORE", "40.0"))
 
+    # High Win-Rate & Daily Profit Rate Target Parameters
+    HIGH_WIN_RATE_MODE: bool = os.getenv("HIGH_WIN_RATE_MODE", "true").lower() in ("true", "1", "t")
+    TARGET_WIN_RATE_PERCENT: float = float(os.getenv("TARGET_WIN_RATE_PERCENT", "95.0"))
+    MIN_CONFIDENCE_SCORE: float = float(os.getenv("MIN_CONFIDENCE_SCORE", "95.0"))
+    TARGET_DAILY_PROFIT_PERCENT: float = float(os.getenv("TARGET_DAILY_PROFIT_PERCENT", "5.0"))
+
 settings = Settings()
