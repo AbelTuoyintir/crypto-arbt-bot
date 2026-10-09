@@ -6,14 +6,22 @@ from src.core.engine import ArbitrageEngine
 from src.scanner.market_scanner import MarketScanner
 from src.dex.manager import DEXManager
 from src.dex.base_adapter import BaseDEXAdapter
+import abitragebot
 
 class MockTriangularDEX(BaseDEXAdapter):
-    def __init__(self, multiplier=1.05, gas_cost=0.001):
+    def __init__(self, multiplier=1.05, gas_cost=0.001, fail_leg=None):
         super().__init__('MockTriangularDEX', '', '')
         self.multiplier = multiplier
         self.gas_cost = gas_cost
+        self.fail_leg = fail_leg
 
     def get_quote(self, amount_in, token_in, token_out):
+        if self.fail_leg == "leg1" and token_in == TOKEN_A:
+            return 0.0
+        if self.fail_leg == "leg2" and token_in == TOKEN_B and token_out == TOKEN_C:
+            return 0.0
+        if self.fail_leg == "leg3" and token_in == TOKEN_C:
+            return 0.0
         return amount_in * self.multiplier
 
     def estimate_output(self, amount_in, token_in, token_out, fee_bips=25):
@@ -101,6 +109,20 @@ def test_triangular_simulator_rejected_safety():
     assert res["valid"] is False
     assert "Token A safety check failed" in res["rejection_reason"]
 
+def test_triangular_simulator_leg_failure():
+    dex = MockTriangularDEX(multiplier=1.03, gas_cost=0.001, fail_leg="leg2")
+    analyzer = TokenSafetyAnalyzer(dex_adapter=dex)
+    sim = TradeSimulator(dex_adapter=dex, safety_analyzer=analyzer)
+    res = sim.simulate_triangular_arbitrage_cycle(
+        token_a=TOKEN_B,
+        token_b=TOKEN_C,
+        initial_gat=100.0,
+        token_a_info={'liquidity': 50000.0},
+        token_b_info={'liquidity': 50000.0}
+    )
+    assert res["valid"] is False
+    assert "Leg 2" in res["rejection_reason"]
+
 def test_triangular_engine_processing():
     manager = DEXManager()
     dex = MockTriangularDEX(multiplier=1.03, gas_cost=0.001)
@@ -120,6 +142,57 @@ def test_triangular_engine_processing():
     assert res["profit"] > 0
     assert "confidence_analysis" in res
     assert res["confidence_analysis"]["confidence_score"] > 0
+
+def test_triangular_engine_missing_dex():
+    manager = DEXManager()
+    engine = ArbitrageEngine(dex_manager=manager)
+    res = engine.process_triangular_opportunity(
+        dex_name='NonExistentDEX',
+        token_a=TOKEN_B,
+        token_b=TOKEN_C,
+        initial_gat=100.0
+    )
+    assert res["executed"] is False
+    assert "not found" in res["reason"]
+
+def test_calculate_opportunity_confidence():
+    manager = DEXManager()
+    engine = ArbitrageEngine(dex_manager=manager)
+
+    high_conf = engine.calculate_opportunity_confidence(
+        profit_percentage=5.0,
+        risk_score=10.0,
+        gas_cost_gat=0.1,
+        initial_gat=100.0
+    )
+    assert high_conf["confidence_score"] >= 80.0
+    assert high_conf["high_confidence"] is True
+
+    low_conf = engine.calculate_opportunity_confidence(
+        profit_percentage=1.1,
+        risk_score=50.0,
+        gas_cost_gat=3.0,
+        initial_gat=100.0
+    )
+    assert low_conf["confidence_score"] < 70.0
+    assert low_conf["high_confidence"] is False
+
+def test_standalone_bot_confidence_score():
+    score, multiplier = abitragebot.calculate_confidence_score(
+        gross_profit_wei=10**16,  # 0.01 ether
+        gas_cost_wei=10**14,      # 0.0001 ether
+        amount_in_wei=10**18      # 1 ether
+    )
+    assert score > 50.0
+    assert multiplier > 0.0
+
+    score_unprofitable, mult_unprofitable = abitragebot.calculate_confidence_score(
+        gross_profit_wei=10**14,
+        gas_cost_wei=10**15,
+        amount_in_wei=10**18
+    )
+    assert score_unprofitable == 0.0
+    assert mult_unprofitable == 0.0
 
 def test_triangular_market_scanner():
     manager = DEXManager()
