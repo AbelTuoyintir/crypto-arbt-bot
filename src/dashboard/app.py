@@ -84,6 +84,18 @@ HTML_TEMPLATE = """
                 <li><span>Slippage Warnings:</span> <strong>{{ risk.slippage_warnings }}</strong></li>
             </ul>
         </div>
+
+        <!-- Triangular & Target Win-Rate -->
+        <div class="card">
+            <h3>Triangular Strategy & 95% Yield Target</h3>
+            <ul class="metric-list">
+                <li><span>Target Win Rate:</span> <strong>{{ settings.TARGET_WIN_RATE_PERCENT }}%</strong></li>
+                <li><span>Daily Win Rate:</span> <strong>{{ "%.1f"|format(triangular.win_rate) }}%</strong></li>
+                <li><span>High Confidence Filter:</span> <strong>{{ "%.1f"|format(settings.MIN_CONFIDENCE_SCORE) }}%</strong></li>
+                <li><span>Triangular Opps Found:</span> <strong>{{ triangular.found }}</strong></li>
+                <li><span>Triangular Executed:</span> <strong>{{ triangular.executed }}</strong></li>
+            </ul>
+        </div>
     </div>
 
     <!-- Recent Opportunities -->
@@ -195,6 +207,22 @@ def dashboard():
             "slippage_warnings": slippage_warnings
         }
 
+        # Triangular strategy metrics
+        tri_found = db.query(func.count(Opportunity.id)).filter(Opportunity.target_token.like("%->%")).scalar() or 0
+        tri_executed = db.query(func.count(Trade.id)).join(Opportunity, Trade.opportunity_id == Opportunity.id).filter(Opportunity.target_token.like("%->%")).scalar() or 0
+        tri_successful = db.query(func.count(Trade.id)).join(Opportunity, Trade.opportunity_id == Opportunity.id).filter(
+            Opportunity.target_token.like("%->%"),
+            Trade.status == 'success'
+        ).scalar() or 0
+        tri_win_rate = (tri_successful / tri_executed * 100.0) if tri_executed > 0 else 100.0
+
+        triangular = {
+            "found": tri_found,
+            "executed": tri_executed,
+            "successful": tri_successful,
+            "win_rate": tri_win_rate
+        }
+
         recent_opps = db.query(Opportunity).order_by(Opportunity.id.desc()).limit(10).all()
 
         return render_template_string(
@@ -204,6 +232,7 @@ def dashboard():
             arbitrage=arbitrage,
             profit=profit,
             risk=risk,
+            triangular=triangular,
             opportunities=recent_opps
         )
     finally:
@@ -237,6 +266,31 @@ def api_metrics():
             "total_opportunities": total_opps,
             "total_trades": total_trades,
             "total_profit": total_profit
+        })
+    finally:
+        db.close()
+
+@app.route("/api/triangular")
+def api_triangular():
+    db = SessionLocal()
+    try:
+        triangular_opps = db.query(func.count(Opportunity.id)).filter(Opportunity.target_token.like("%->%")).scalar() or 0
+        executed_triangular = db.query(func.count(Trade.id)).join(Opportunity, Trade.opportunity_id == Opportunity.id).filter(Opportunity.target_token.like("%->%")).scalar() or 0
+        successful_triangular = db.query(func.count(Trade.id)).join(Opportunity, Trade.opportunity_id == Opportunity.id).filter(
+            Opportunity.target_token.like("%->%"),
+            Trade.status == 'success'
+        ).scalar() or 0
+        win_rate = (successful_triangular / executed_triangular * 100.0) if executed_triangular > 0 else 100.0
+
+        return jsonify({
+            "status": "online",
+            "high_win_rate_mode": settings.HIGH_WIN_RATE_MODE,
+            "target_win_rate_percent": settings.TARGET_WIN_RATE_PERCENT,
+            "min_confidence_score": settings.MIN_CONFIDENCE_SCORE,
+            "triangular_opportunities": triangular_opps,
+            "triangular_trades_executed": executed_triangular,
+            "triangular_trades_successful": successful_triangular,
+            "daily_win_rate": win_rate
         })
     finally:
         db.close()
