@@ -211,3 +211,23 @@ def test_triangular_market_scanner():
     assert len(results) == 1
     assert results[0]["pair"] == "TOKB->TOKC"
     assert results[0]["profit"] > 0
+
+def test_triangular_engine_confidence_filtering():
+    manager = DEXManager()
+    dex = MockTriangularDEX(multiplier=1.03, gas_cost=0.001)
+    manager.register_adapter('MockTriangularDEX', dex)
+    engine = ArbitrageEngine(dex_manager=manager)
+
+    # Calling with min_confidence requirement = 101.0, which exceeds max possible confidence (100.0)
+    res = engine.process_triangular_opportunity(
+        dex_name='MockTriangularDEX',
+        token_a=TOKEN_B,
+        token_b=TOKEN_C,
+        initial_gat=100.0,
+        token_a_info={'liquidity': 50000.0},
+        token_b_info={'liquidity': 50000.0},
+        min_confidence=101.0
+    )
+
+    assert res["executed"] is False
+    assert "Confidence score" in res["reason"]

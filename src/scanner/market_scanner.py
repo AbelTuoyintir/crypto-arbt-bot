@@ -17,6 +17,23 @@ class MarketScanner:
         self.dex_manager = dex_manager
         self.engine = engine or ArbitrageEngine(dex_manager=dex_manager)
 
+    @staticmethod
+    def generate_triangular_pairs(tokens: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Generate distinct ordered pair combinations (Token A, Token B) from a list of tokens
+        for 3-leg triangular arbitrage scanning (GAT -> Token A -> Token B -> GAT).
+        """
+        pairs = []
+        n = len(tokens)
+        for i in range(n):
+            for j in range(n):
+                if i != j:
+                    pairs.append({
+                        "token_a": tokens[i],
+                        "token_b": tokens[j]
+                    })
+        return pairs
+
     def scan_market(self, target_tokens: List[Dict[str, Any]], initial_gat: float = 100.0) -> List[Dict[str, Any]]:
         """
         Scan all supported DEXs and tokens for GAT arbitrage opportunities.
