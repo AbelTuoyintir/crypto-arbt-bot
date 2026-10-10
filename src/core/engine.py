@@ -211,7 +211,8 @@ class ArbitrageEngine:
         token_b: str,
         initial_gat: float = 100.0,
         token_a_info: Dict[str, Any] = None,
-        token_b_info: Dict[str, Any] = None
+        token_b_info: Dict[str, Any] = None,
+        min_confidence: float = 60.0
     ) -> Dict[str, Any]:
         """
         Process a 3-leg triangular arbitrage opportunity (GAT -> TOKEN A -> TOKEN B -> GAT) end-to-end:
@@ -286,7 +287,9 @@ class ArbitrageEngine:
                 trade_amount_gat=initial_gat,
                 gas_cost_gat=sim_res.get("total_gas_gat", 0.0),
                 profit_percent=profit_analysis.get("profit_percentage", 0.0),
-                token_risk_score=safety_analysis.get("risk_score", 0.0)
+                token_risk_score=safety_analysis.get("risk_score", 0.0),
+                confidence_score=conf_res.get("confidence_score"),
+                min_confidence=min_confidence
             )
 
             if not risk_res["approved"]:
