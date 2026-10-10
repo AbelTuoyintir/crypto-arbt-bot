@@ -41,9 +41,16 @@ class RiskManager:
         gas_cost_gat: float,
         profit_percent: float,
         token_risk_score: float,
-        confidence_score: float = None
+        confidence_score: float = None,
+        min_confidence: float = 60.0
     ) -> Dict[str, Any]:
         """Validate if a trade meets all risk management rules before execution."""
+
+        if confidence_score is not None and confidence_score < min_confidence:
+            return {
+                "approved": False,
+                "reason": f"Confidence score ({confidence_score:.1f}) below required minimum ({min_confidence:.1f}) for target win rate"
+            }
 
         if self.kill_switch_active or settings.EMERGENCY_KILL_SWITCH:
             return {
