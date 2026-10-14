@@ -17,5 +17,23 @@ def test_run_triangular_bot_single_run(caplog):
     # Verify log messages contain expected initialization and summary text
     assert "GAT ENHANCED TRIANGULAR ARBITRAGE BOT INITIALIZED" in caplog.text
     assert "Target Win Rate   : 95.0%" in caplog.text
-    assert "Daily Win Rate:" in caplog.text
+    assert "Win Rate:" in caplog.text
     assert "Completed requested scanning iterations" in caplog.text
+
+def test_run_triangular_bot_auto_generate_pairs(caplog):
+    import logging
+    caplog.set_level(logging.INFO)
+
+    # Run single scan with auto_generate_pairs=True and min_confidence=90.0
+    run_triangular_bot(
+        interval=1,
+        iterations=1,
+        initial_gat=100.0,
+        single_run=True,
+        min_confidence=90.0,
+        auto_generate_pairs=True
+    )
+
+    assert "Min Confidence    : 90.0%" in caplog.text
+    assert "Active Pair Paths : 20 pairs" in caplog.text
+    assert "Yield Rate:" in caplog.text

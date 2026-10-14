@@ -9,6 +9,7 @@ class RiskManager:
         self.daily_trades = 0
         self.daily_successful_trades = 0
         self.daily_loss = 0.0
+        self.daily_total_profit = 0.0
         self.kill_switch_active = settings.EMERGENCY_KILL_SWITCH
 
     def trigger_kill_switch(self, reason: str = "Manual trigger"):
@@ -23,6 +24,9 @@ class RiskManager:
         self.daily_trades += 1
         if success and profit_or_loss_gat > 0:
             self.daily_successful_trades += 1
+
+        self.daily_total_profit += profit_or_loss_gat
+
         if profit_or_loss_gat < 0 or not success:
             loss_amount = abs(profit_or_loss_gat) if profit_or_loss_gat < 0 else 0.0
             self.daily_loss += loss_amount
@@ -34,6 +38,12 @@ class RiskManager:
         if self.daily_trades == 0:
             return 100.0
         return (self.daily_successful_trades / self.daily_trades) * 100.0
+
+    def get_daily_profit_rate(self, initial_capital: float = 100.0) -> float:
+        """Returns cumulative daily profit rate percentage based on starting capital."""
+        if initial_capital <= 0:
+            return 0.0
+        return (self.daily_total_profit / initial_capital) * 100.0
 
     def validate_trade(
         self,
