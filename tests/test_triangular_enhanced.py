@@ -18,6 +18,19 @@ def test_risk_manager_win_rate_tracking():
     rm.record_trade_result(0.0, success=False)
     assert rm.get_daily_win_rate() == 50.0
 
+def test_risk_manager_daily_profit_rate_tracking():
+    rm = RiskManager()
+    assert rm.daily_total_profit == 0.0
+    assert rm.get_daily_profit_rate(initial_capital=100.0) == 0.0
+
+    # Record 5 GAT profit
+    rm.record_trade_result(5.0, success=True)
+    assert rm.daily_total_profit == 5.0
+    assert rm.get_daily_profit_rate(initial_capital=100.0) == 5.0
+
+    # Record edge case: initial capital <= 0
+    assert rm.get_daily_profit_rate(initial_capital=0.0) == 0.0
+
 def test_risk_manager_confidence_filtering():
     rm = RiskManager()
     # When confidence is high (96.0 >= 95.0 required), should approve
