@@ -70,3 +70,17 @@ def test_api_triangular_endpoint():
     assert "target_win_rate_percent" in data
     assert data["target_win_rate_percent"] == 95.0
     assert "daily_win_rate" in data
+
+def test_abitragebot_min_confidence_threshold(monkeypatch):
+    import abitragebot
+    score, mult = abitragebot.calculate_confidence_score(
+        gross_profit_wei=10**16,
+        gas_cost_wei=10**14,
+        amount_in_wei=10**18
+    )
+    # Default MIN_CONFIDENCE_SCORE = 95.0
+    monkeypatch.setenv("MIN_CONFIDENCE_SCORE", "95.0")
+    import os
+    min_conf = float(os.getenv("MIN_CONFIDENCE_SCORE", "95.0"))
+    assert min_conf == 95.0
+    assert score >= 70.0

@@ -251,8 +251,9 @@ async def main():
                 confidence, multiplier = calculate_confidence_score(profit, gas_cost, amount_in)
                 adjusted_amount_in = int(amount_in * multiplier)
 
+                min_confidence = float(os.getenv("MIN_CONFIDENCE_SCORE", "95.0"))
                 net_profit = profit - gas_cost
-                if net_profit > 0 and confidence >= 50.0:
+                if net_profit > 0 and confidence >= min_confidence:
                     logger.info("Found profitable triangular path: %s", [t[:6] for t in path])
                     logger.info(
                         "Gross: %f BNB, Gas: %f BNB, Net: %f BNB, Confidence: %.1f%%",
