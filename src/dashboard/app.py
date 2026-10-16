@@ -1,9 +1,12 @@
+import logging
 from flask import Flask, render_template_string, jsonify
 from datetime import datetime, timezone, timedelta
 from sqlalchemy import func
 from config.settings import settings
 from src.db.models import SessionLocal, Opportunity, Trade, Token
 from src.wallet.wallet_manager import WalletManager
+
+logger = logging.getLogger("DashboardApp")
 
 app = Flask(__name__)
 wallet_mgr = WalletManager()
@@ -237,6 +240,12 @@ def dashboard():
         )
     finally:
         db.close()
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    # Log exception securely on server without exposing stack trace or internals to client
+    logger.error("Unhandled exception in dashboard request: %s", e, exc_info=True)
+    return jsonify({"error": "An internal error occurred"}), 500
 
 @app.after_request
 def add_security_headers(response):
