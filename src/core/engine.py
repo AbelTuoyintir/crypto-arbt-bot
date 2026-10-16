@@ -220,7 +220,7 @@ class ArbitrageEngine:
         initial_gat: float = 100.0,
         token_a_info: Dict[str, Any] = None,
         token_b_info: Dict[str, Any] = None,
-        min_confidence: float = 60.0
+        min_confidence: float = None
     ) -> Dict[str, Any]:
         """
         Process a 3-leg triangular arbitrage opportunity (GAT -> TOKEN A -> TOKEN B -> GAT) end-to-end:
@@ -237,6 +237,9 @@ class ArbitrageEngine:
 
         safety_analyzer = TokenSafetyAnalyzer(dex_adapter=dex_adapter)
         simulator = TradeSimulator(dex_adapter=dex_adapter, safety_analyzer=safety_analyzer, profit_calculator=self.profit_calculator)
+
+        if min_confidence is None:
+            min_confidence = settings.MIN_CONFIDENCE_SCORE
 
         # 1. Run full 3-leg triangular simulation
         sim_res = simulator.simulate_triangular_arbitrage_cycle(
