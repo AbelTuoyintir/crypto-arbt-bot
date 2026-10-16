@@ -12,6 +12,26 @@ def test_risk_controls_valid_trade():
     )
     assert res["approved"] is True
 
+def test_non_positive_trade_amount():
+    rm = RiskManager()
+    res_zero = rm.validate_trade(
+        trade_amount_gat=0.0,
+        gas_cost_gat=0.001,
+        profit_percent=2.0,
+        token_risk_score=10.0
+    )
+    assert res_zero["approved"] is False
+    assert "Invalid trade amount" in res_zero["reason"]
+
+    res_negative = rm.validate_trade(
+        trade_amount_gat=-10.0,
+        gas_cost_gat=0.001,
+        profit_percent=2.0,
+        token_risk_score=10.0
+    )
+    assert res_negative["approved"] is False
+    assert "Invalid trade amount" in res_negative["reason"]
+
 def test_max_trade_exceeded():
     rm = RiskManager()
     res = rm.validate_trade(
