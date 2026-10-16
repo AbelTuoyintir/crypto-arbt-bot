@@ -25,6 +25,19 @@ class ArbitrageEngine:
         self.tx_manager = transaction_manager or TransactionManager(wallet_manager=self.wallet_manager)
         self.risk_manager = risk_manager or RiskManager()
         self.profit_calculator = ProfitCalculator()
+        # Cache TradeSimulator (and contained TokenSafetyAnalyzer) per DEX adapter to prevent redundant object creation during high-frequency scanning cycles.
+        self._simulator_cache: Dict[str, TradeSimulator] = {}
+
+    def _get_simulator(self, dex_name: str, dex_adapter) -> TradeSimulator:
+        """Helper to fetch or instantiate a cached TradeSimulator per DEX adapter."""
+        if dex_name not in self._simulator_cache:
+            safety_analyzer = TokenSafetyAnalyzer(dex_adapter=dex_adapter)
+            self._simulator_cache[dex_name] = TradeSimulator(
+                dex_adapter=dex_adapter,
+                safety_analyzer=safety_analyzer,
+                profit_calculator=self.profit_calculator
+            )
+        return self._simulator_cache[dex_name]
 
     def process_opportunity(
         self,
@@ -44,8 +57,8 @@ class ArbitrageEngine:
                 "reason": f"DEX adapter '{dex_name}' not found"
             }
 
-        safety_analyzer = TokenSafetyAnalyzer(dex_adapter=dex_adapter)
-        simulator = TradeSimulator(dex_adapter=dex_adapter, safety_analyzer=safety_analyzer, profit_calculator=self.profit_calculator)
+        # Reuse cached simulator and safety_analyzer to eliminate unnecessary object instantiation latency per scan call.
+        simulator = self._get_simulator(dex_name, dex_adapter)
 
         # 1. Run full round-trip simulation
         sim_res = simulator.simulate_arbitrage_cycle(target_token=target_token, initial_gat=initial_gat, token_info=token_info)
