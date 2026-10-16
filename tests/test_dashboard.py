@@ -54,6 +54,18 @@ def test_api_metrics_data(client):
         db.commit()
         db.close()
 
+def test_api_metrics_error_handling(client, monkeypatch):
+    from unittest.mock import MagicMock
+    mock_session = MagicMock()
+    mock_session.query.side_effect = Exception("Database connection error")
+    monkeypatch.setattr('src.dashboard.app.SessionLocal', lambda: mock_session)
+
+    response = client.get('/api/metrics')
+    assert response.status_code == 500
+    data = response.get_json()
+    assert data == {"error": "An internal error occurred"}
+    assert "Database connection error" not in response.get_data(as_text=True)
+
 def test_api_metrics_security_headers(client):
     response = client.get('/api/metrics')
     assert response.status_code == 200
