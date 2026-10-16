@@ -103,7 +103,8 @@ class MarketScanner:
     def scan_triangular_market(
         self,
         token_pairs: List[Dict[str, Any]],
-        initial_gat: float = 100.0
+        initial_gat: float = 100.0,
+        min_confidence: float = None
     ) -> List[Dict[str, Any]]:
         """
         Scan all supported DEXs for triangular arbitrage opportunities across token pairs (Token A, Token B).
@@ -135,7 +136,8 @@ class MarketScanner:
                         token_b=addr_b,
                         initial_gat=initial_gat,
                         token_a_info=token_a,
-                        token_b_info=token_b
+                        token_b_info=token_b,
+                        min_confidence=min_confidence
                     )
 
                     sim_res = res.get("sim_res") or {}

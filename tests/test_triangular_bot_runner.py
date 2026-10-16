@@ -37,3 +37,19 @@ def test_run_triangular_bot_auto_generate_pairs(caplog):
     assert "Min Confidence    : 90.0%" in caplog.text
     assert "Active Pair Paths : 20 pairs" in caplog.text
     assert "Yield Rate:" in caplog.text
+
+def test_run_triangular_bot_target_daily_profit(caplog):
+    import logging
+    caplog.set_level(logging.INFO)
+
+    run_triangular_bot(
+        interval=1,
+        iterations=1,
+        initial_gat=100.0,
+        single_run=True,
+        min_confidence=95.0,
+        target_daily_profit=15.0
+    )
+
+    assert "Daily Profit Target: 15.0%" in caplog.text
+    assert "Target: 15.0%" in caplog.text
