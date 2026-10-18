@@ -90,7 +90,8 @@ class ArbitrageEngine:
                 profit_percentage=profit_analysis.get("profit_percentage", 0.0),
                 risk_score=safety_analysis.get("risk_score", 0.0),
                 gas_cost_gat=sim_res.get("total_gas_gat", 0.0),
-                initial_gat=initial_gat
+                initial_gat=initial_gat,
+                price_impact_percent=profit_analysis.get("price_impact_percent", 0.0)
             )
 
             # 2. Risk Manager Validation
@@ -162,7 +163,8 @@ class ArbitrageEngine:
         profit_percentage: float,
         risk_score: float,
         gas_cost_gat: float,
-        initial_gat: float
+        initial_gat: float,
+        price_impact_percent: float = 0.0
     ) -> Dict[str, Any]:
         """
         Enhanced Feature: Calculates confidence score (0 - 100) and optimal trade size
@@ -186,6 +188,12 @@ class ArbitrageEngine:
         if gas_ratio > 2.0:
             confidence -= 25.0
         elif gas_ratio > 1.0:
+            confidence -= 10.0
+
+        # Deduct for price impact in multi-leg swaps
+        if price_impact_percent > 2.0:
+            confidence -= 20.0
+        elif price_impact_percent > 1.0:
             confidence -= 10.0
 
         confidence = max(0.0, min(100.0, confidence))
@@ -290,7 +298,8 @@ class ArbitrageEngine:
                 profit_percentage=profit_analysis.get("profit_percentage", 0.0),
                 risk_score=safety_analysis.get("risk_score", 0.0),
                 gas_cost_gat=sim_res.get("total_gas_gat", 0.0),
-                initial_gat=initial_gat
+                initial_gat=initial_gat,
+                price_impact_percent=profit_analysis.get("price_impact_percent", 0.0)
             )
 
             # 3. Risk Manager Validation
