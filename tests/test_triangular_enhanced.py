@@ -97,3 +97,36 @@ def test_abitragebot_min_confidence_threshold(monkeypatch):
     min_conf = float(os.getenv("MIN_CONFIDENCE_SCORE", "95.0"))
     assert min_conf == 95.0
     assert score >= 70.0
+
+def test_engine_price_impact_confidence_deduction():
+    manager = DEXManager()
+    engine = ArbitrageEngine(dex_manager=manager)
+
+    conf1 = engine.calculate_opportunity_confidence(
+        profit_percentage=2.0,
+        risk_score=0.0,
+        gas_cost_gat=0.001,
+        initial_gat=100.0,
+        price_impact_percent=0.0
+    )
+
+    conf2 = engine.calculate_opportunity_confidence(
+        profit_percentage=2.0,
+        risk_score=0.0,
+        gas_cost_gat=0.001,
+        initial_gat=100.0,
+        price_impact_percent=1.5
+    )
+
+    conf3 = engine.calculate_opportunity_confidence(
+        profit_percentage=2.0,
+        risk_score=0.0,
+        gas_cost_gat=0.001,
+        initial_gat=100.0,
+        price_impact_percent=2.5
+    )
+
+    assert conf1["confidence_score"] > conf2["confidence_score"]
+    assert conf2["confidence_score"] > conf3["confidence_score"]
+    assert conf1["confidence_score"] - conf2["confidence_score"] == 10.0
+    assert conf1["confidence_score"] - conf3["confidence_score"] == 20.0
