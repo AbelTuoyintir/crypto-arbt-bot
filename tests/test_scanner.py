@@ -53,3 +53,30 @@ def test_generate_triangular_pairs():
     assert len(pairs) == 6
     assert pairs[0]["token_a"]["symbol"] == "A"
     assert pairs[0]["token_b"]["symbol"] == "B"
+
+def test_scan_triangular_market_min_confidence_propagation(monkeypatch):
+    dex = TrackingScannerDEX(output_multiplier=1.05, gas_cost=0.001)
+    dex_manager = DEXManager()
+    dex_manager.register_adapter("MockDEX", dex)
+
+    called_confidence = []
+
+    def mock_process_triangular_opportunity(*args, **kwargs):
+        called_confidence.append(kwargs.get("min_confidence"))
+        return {"sim_res": {"profit_analysis": {"net_profit": 1.0}}}
+
+    engine = ArbitrageEngine(dex_manager=dex_manager)
+    monkeypatch.setattr(engine, "process_triangular_opportunity", mock_process_triangular_opportunity)
+    scanner = MarketScanner(dex_manager=dex_manager, engine=engine)
+
+    pairs = [
+        {
+            "token_a": {"address": "0x111", "symbol": "A"},
+            "token_b": {"address": "0x222", "symbol": "B"}
+        }
+    ]
+
+    scanner.scan_triangular_market(token_pairs=pairs, initial_gat=100.0, min_confidence=98.5)
+
+    assert len(called_confidence) == 1
+    assert called_confidence[0] == 98.5

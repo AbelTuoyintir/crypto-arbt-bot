@@ -73,12 +73,14 @@ def run_triangular_bot(
     initial_gat: float = 100.0,
     single_run: bool = False,
     min_confidence: float = None,
+    target_daily_profit: float = None,
     auto_generate_pairs: bool = False
 ):
     """Run continuous or single-pass 95% profit rate triangular arbitrage bot."""
     dex_manager, engine, scanner = create_triangular_bot_engine()
 
     effective_confidence = min_confidence if min_confidence is not None else settings.MIN_CONFIDENCE_SCORE
+    effective_target_profit = target_daily_profit if target_daily_profit is not None else settings.TARGET_DAILY_PROFIT_PERCENT
 
     if auto_generate_pairs:
         token_pairs = MarketScanner.generate_triangular_pairs(DEFAULT_TOKENS)
@@ -92,7 +94,7 @@ def run_triangular_bot(
     logger.info(f"   High Win-Rate Mode: {settings.HIGH_WIN_RATE_MODE}")
     logger.info(f"   Target Win Rate   : {settings.TARGET_WIN_RATE_PERCENT}%")
     logger.info(f"   Min Confidence    : {effective_confidence}%")
-    logger.info(f"   Daily Profit Target: {settings.TARGET_DAILY_PROFIT_PERCENT}%")
+    logger.info(f"   Daily Profit Target: {effective_target_profit}%")
     logger.info(f"   Active Pair Paths : {len(token_pairs)} pairs")
     logger.info("==========================================================")
 
@@ -107,7 +109,8 @@ def run_triangular_bot(
             # Scan triangular token pairs
             results = scanner.scan_triangular_market(
                 token_pairs=token_pairs,
-                initial_gat=initial_gat
+                initial_gat=initial_gat,
+                min_confidence=effective_confidence
             )
 
             # Summarize loop results
@@ -118,7 +121,7 @@ def run_triangular_bot(
                 f"[SUMMARY] Daily Trades: {engine.risk_manager.daily_trades} | "
                 f"Win Rate: {win_rate:.1f}% (Target: {settings.TARGET_WIN_RATE_PERCENT}%) | "
                 f"Daily Profit: {daily_profit:.4f} {settings.BASE_TOKEN_SYMBOL} "
-                f"(Yield Rate: {profit_rate:.2f}% / Target: {settings.TARGET_DAILY_PROFIT_PERCENT}%)"
+                f"(Yield Rate: {profit_rate:.2f}% / Target: {effective_target_profit}%)"
             )
 
             if single_run or (iterations and loop_count >= iterations):
@@ -137,6 +140,7 @@ if __name__ == "__main__":
     parser.add_argument("--initial-gat", type=float, default=100.0, help="Initial trade size in GAT (default: 100.0)")
     parser.add_argument("--single-run", action="store_true", help="Run a single market scan cycle and exit")
     parser.add_argument("--min-confidence", type=float, default=None, help="Override minimum confidence score threshold (e.g. 95.0)")
+    parser.add_argument("--target-daily-profit", type=float, default=None, help="Override target daily profit percentage (e.g. 5.0 or 95.0)")
     parser.add_argument("--auto-generate-pairs", action="store_true", help="Automatically generate all 3-leg triangular pair combinations from supported token list")
 
     args = parser.parse_args()
@@ -146,5 +150,6 @@ if __name__ == "__main__":
         initial_gat=args.initial_gat,
         single_run=args.single_run,
         min_confidence=args.min_confidence,
+        target_daily_profit=args.target_daily_profit,
         auto_generate_pairs=args.auto_generate_pairs
     )
