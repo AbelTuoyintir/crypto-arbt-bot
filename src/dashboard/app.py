@@ -1,9 +1,12 @@
+import os
 from flask import Flask, render_template_string, jsonify
 from datetime import datetime, timezone, timedelta
 from sqlalchemy import func
 from config.settings import settings
-from src.db.models import SessionLocal, Opportunity, Trade, Token
+from src.db.models import SessionLocal, Opportunity, Trade, Token, init_db
 from src.wallet.wallet_manager import WalletManager
+
+init_db()
 
 app = Flask(__name__)
 wallet_mgr = WalletManager()
@@ -296,4 +299,4 @@ def api_triangular():
         db.close()
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    app.run(host="0.0.0.0", port=int(os.getenv("DASHBOARD_PORT", "5000")))

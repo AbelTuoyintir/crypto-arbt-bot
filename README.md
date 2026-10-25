@@ -142,9 +142,9 @@ MIN_LIQUIDITY=10000.0
 ### 3. Running Web Dashboard
 
 ```bash
-python src/dashboard/app.py
+python -m src.dashboard.app
 ```
-Navigate to `http://localhost:5000` to view real-time portfolio, arbitrage, profit, and risk metrics.
+The dashboard initializes any missing database tables on startup. Navigate to `http://localhost:5000` to view real-time portfolio, arbitrage, profit, and risk metrics.
 
 ### 4. Running Standalone Triangular Arbitrage Bot
 
